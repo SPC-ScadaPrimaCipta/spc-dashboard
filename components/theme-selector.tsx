@@ -11,7 +11,11 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 import { useTheme } from "next-themes";
 
 export function ThemeSelector() {
-	const { colorTheme, setColor, colorThemes } = useThemeColor();
+	const {
+		setColor,
+		colorThemes,
+		colorTheme: currentColorTheme,
+	} = useThemeColor();
 	const { theme: currentTheme } = useTheme();
 	const isDark = currentTheme === "dark";
 
@@ -32,25 +36,35 @@ export function ThemeSelector() {
 						Theme Color
 					</h4>
 					<div className="grid grid-cols-3 gap-2">
-						{colorThemes.map((theme) => (
-							<button
-								key={theme.name}
-								onClick={() => setColor(theme)}
-								className="flex flex-col items-center gap-2 p-2 rounded-lg hover:bg-accent transition-colors"
-							>
-								<div
-									className="w-10 h-10 rounded-full border-2 border-border"
-									style={{
-										backgroundColor: isDark
-											? theme.dark
-											: theme.color,
-									}}
-								/>
-								<span className="text-xs text-muted-foreground">
-									{theme.name}
-								</span>
-							</button>
-						))}
+						{colorThemes.map((theme) => {
+							const isActive =
+								theme.name ===
+								(currentColorTheme?.name ||
+									colorThemes[0].name);
+							return (
+								<button
+									key={theme.name}
+									onClick={() => setColor(theme)}
+									className={`flex flex-col items-center gap-2 p-2 rounded-lg hover:bg-accent transition-colors ${
+										isActive
+											? "ring-2 ring-primary ring-offset-2"
+											: ""
+									}`}
+								>
+									<div
+										className="w-10 h-10 rounded-full border-2 border-border"
+										style={{
+											backgroundColor: isDark
+												? theme.dark["--primary"]
+												: theme.light["--primary"],
+										}}
+									/>
+									<span className="text-xs text-muted-foreground">
+										{theme.name}
+									</span>
+								</button>
+							);
+						})}
 					</div>
 				</div>
 			</PopoverContent>
