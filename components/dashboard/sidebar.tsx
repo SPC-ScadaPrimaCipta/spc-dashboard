@@ -1,13 +1,7 @@
 "use client";
 
 import { useSidebar } from "./sidebar-context";
-import {
-	Home,
-	LayoutDashboard,
-	Settings,
-	LogOut,
-	RocketIcon,
-} from "lucide-react";
+import { LayoutDashboard, Settings, RocketIcon, User } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
 import { useEffect, useRef } from "react";
@@ -15,8 +9,8 @@ import { usePathname } from "next/navigation";
 
 const menu = [
 	{ name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-	{ name: "Home", href: "/", icon: Home },
-	{ name: "Settings", href: "/dashboard/settings", icon: Settings },
+	{ name: "Users", href: "/users", icon: User },
+	{ name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {

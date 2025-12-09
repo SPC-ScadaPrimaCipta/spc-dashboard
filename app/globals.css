@@ -121,3 +121,8 @@
 	}
 }
 
+html,
+body {
+	height: 100%;
+	overflow: hidden; /* stops body scroll */
+}
