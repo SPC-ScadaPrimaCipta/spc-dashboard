@@ -26,7 +26,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
 					variant="ghost"
 					size="sm"
 					onClick={() => setIsVisible(!isVisible)}
-					className="absolute right-0 top-0 h-full px-3 py-2 hover:!bg-transparent hover:cursor-pointer"
+					className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent! hover:cursor-pointer"
 					tabIndex={-1}
 				>
 					{isVisible ? (

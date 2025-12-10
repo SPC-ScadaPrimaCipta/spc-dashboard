@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,91 +29,86 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { BadgeCheck, MailPlus, MoreVertical, Plus, Shield } from "lucide-react";
 
-type UserStatus = "Active" | "Invited" | "Suspended";
-type UserRole = "Admin" | "Manager" | "Editor" | "Viewer";
+type UserStatus = "Active" | "Unverified" | "Suspended";
+type UserRole = "admin" | "user" | "manager" | "editor" | "viewer";
 
-const MOCK_USERS: Array<{
+interface User {
 	id: string;
 	name: string;
 	email: string;
-	role: UserRole;
+	role: string;
 	status: UserStatus;
 	team: string;
 	lastActive: string;
-}> = [
-	{
-		id: "USR-2048",
-		name: "Ava Craig",
-		email: "ava.craig@solstice.io",
-		role: "Admin",
-		status: "Active",
-		team: "Product",
-		lastActive: "2 minutes ago",
-	},
-	{
-		id: "USR-2051",
-		name: "Myles Norris",
-		email: "myles.norris@solstice.io",
-		role: "Manager",
-		status: "Active",
-		team: "Sales",
-		lastActive: "45 minutes ago",
-	},
-	{
-		id: "USR-2099",
-		name: "Veronica Patel",
-		email: "veronica.patel@solstice.io",
-		role: "Editor",
-		status: "Suspended",
-		team: "Content",
-		lastActive: "3 days ago",
-	},
-	{
-		id: "USR-2110",
-		name: "Henry Park",
-		email: "henry.park@solstice.io",
-		role: "Viewer",
-		status: "Invited",
-		team: "Finance",
-		lastActive: "Pending invite",
-	},
-	{
-		id: "USR-2142",
-		name: "Summer Tran",
-		email: "summer.tran@solstice.io",
-		role: "Editor",
-		status: "Active",
-		team: "Marketing",
-		lastActive: "12 hours ago",
-	},
-	{
-		id: "USR-2183",
-		name: "Isaac Holloway",
-		email: "isaac.holloway@solstice.io",
-		role: "Manager",
-		status: "Active",
-		team: "Customer Success",
-		lastActive: "7 minutes ago",
-	},
-];
+	createdAt: string;
+	emailVerified: boolean;
+	banned: boolean;
+}
 
 const STATUS_STYLES: Record<UserStatus, string> = {
 	Active: "text-emerald-600 bg-emerald-100/80 dark:text-emerald-300 dark:bg-emerald-500/15",
-	Invited:
+	Unverified:
 		"text-amber-600 bg-amber-100/70 dark:text-amber-300 dark:bg-amber-500/10",
 	Suspended:
 		"text-rose-600 bg-rose-100/80 dark:text-rose-300 dark:bg-rose-500/15",
 };
 
-const ROLES: UserRole[] = ["Admin", "Manager", "Editor", "Viewer"];
+const ROLES: UserRole[] = ["admin", "user", "manager", "viewer"];
 
 export default function UsersPage() {
 	const [search, setSearch] = useState("");
 	const [roleFilter, setRoleFilter] = useState<string>("all");
 	const [statusFilter, setStatusFilter] = useState<string>("all");
+	const [users, setUsers] = useState<User[]>([]);
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		const fetchUsers = async () => {
+			setLoading(true);
+			const params = new URLSearchParams();
+			if (search) params.append("searchValue", search);
+
+			// Note: better-auth listUsers primarily supports generic search or limit/offset.
+			// Complex filtering might need to be handled client-side or via specific admin query helpers if available.
+			// For now, we'll fetch and let client-side filtering refine it,
+			// but we pass standard params just in case our API wrapper passes them to a compatible backend query.
+
+			try {
+				const res = await fetch(
+					`/api/admin/list-users?${params.toString()}`
+				);
+				const json = await res.json();
+
+				if (json.users) {
+					const mappedUsers = json.users.map((u: any) => ({
+						id: u.id,
+						name: u.name,
+						email: u.email,
+						role: u.role || "user",
+						status: u.banned
+							? "Suspended"
+							: u.emailVerified
+							? "Active"
+							: "Unverified",
+						team: "Unassigned", // Placeholder as it's not in default schema
+						lastActive: new Date(u.createdAt).toLocaleDateString(), // using createdAt as proxy for now
+						createdAt: u.createdAt,
+						emailVerified: u.emailVerified,
+						banned: u.banned,
+					}));
+					setUsers(mappedUsers);
+				}
+			} catch (error) {
+				console.error("Failed to fetch users", error);
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchUsers();
+	}, [search, roleFilter, statusFilter]);
 
 	const filteredUsers = useMemo(() => {
-		return MOCK_USERS.filter((user) => {
+		return users.filter((user) => {
 			const matchesSearch =
 				!search ||
 				user.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -128,13 +123,11 @@ export default function UsersPage() {
 
 			return matchesSearch && matchesRole && matchesStatus;
 		});
-	}, [search, roleFilter, statusFilter]);
+	}, [search, roleFilter, statusFilter, users]);
 
-	const activeUsers = MOCK_USERS.filter(
-		(user) => user.status === "Active"
-	).length;
-	const pendingInvites = MOCK_USERS.filter(
-		(user) => user.status === "Invited"
+	const activeUsers = users.filter((user) => user.status === "Active").length;
+	const pendingInvites = users.filter(
+		(user) => user.status === "Unverified"
 	).length;
 
 	return (
@@ -166,7 +159,7 @@ export default function UsersPage() {
 							Total members
 						</CardTitle>
 						<CardDescription className="text-3xl font-semibold text-foreground">
-							{MOCK_USERS.length}
+							{users.length}
 						</CardDescription>
 					</CardHeader>
 				</Card>
@@ -294,113 +287,122 @@ export default function UsersPage() {
 					</Button>
 				</CardHeader>
 				<CardContent className="px-0">
-					<div className="px-6">
-						<div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 border-b pb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-							<span>User</span>
-							<span>Role &amp; team</span>
-							<span>Status</span>
-							<span className="sr-only">Row actions</span>
+					{loading ? (
+						<div className="p-8 text-center text-muted-foreground">
+							Loading users...
 						</div>
-					</div>
-
-					<ul className="divide-y">
-						{filteredUsers.map((user) => (
-							<li
-								key={user.id}
-								className="px-6 py-4 grid items-center gap-4 grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
-							>
-								<div className="flex items-center gap-3">
-									<Avatar>
-										<AvatarFallback>
-											{user.name
-												.split(" ")
-												.map((part) => part[0])
-												.join("")
-												.slice(0, 2)
-												.toUpperCase()}
-										</AvatarFallback>
-									</Avatar>
-									<div>
-										<p className="font-medium leading-tight">
-											{user.name}
-										</p>
-										<p className="text-muted-foreground text-sm">
-											{user.email}
-										</p>
-										<p className="text-muted-foreground text-xs">
-											{user.id}
-										</p>
-									</div>
+					) : (
+						<>
+							<div className="px-6">
+								<div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 border-b pb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+									<span>User</span>
+									<span>Role &amp; team</span>
+									<span>Status</span>
+									<span className="sr-only">Row actions</span>
 								</div>
+							</div>
 
-								<div>
-									<p className="text-sm font-medium">
-										{user.role}
-									</p>
-									<p className="text-muted-foreground text-xs">
-										{user.team}
-									</p>
-								</div>
-
-								<div className="flex flex-col gap-1">
-									<span
-										className={`inline-flex w-fit items-center rounded-full px-2 py-1 text-xs font-medium ${
-											STATUS_STYLES[user.status]
-										}`}
+							<ul className="divide-y">
+								{filteredUsers.map((user) => (
+									<li
+										key={user.id}
+										className="px-6 py-4 grid items-center gap-4 grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
 									>
-										{user.status}
-									</span>
-									<span className="text-muted-foreground text-xs">
-										{user.lastActive}
-									</span>
-								</div>
+										<div className="flex items-center gap-3">
+											<Avatar>
+												<AvatarFallback>
+													{user.name
+														.split(" ")
+														.map((part) => part[0])
+														.join("")
+														.slice(0, 2)
+														.toUpperCase()}
+												</AvatarFallback>
+											</Avatar>
+											<div>
+												<p className="font-medium leading-tight">
+													{user.name}
+												</p>
+												<p className="text-muted-foreground text-sm">
+													{user.email}
+												</p>
+												<p className="text-muted-foreground text-xs">
+													{user.id}
+												</p>
+											</div>
+										</div>
 
-								<div className="flex justify-end">
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button
-												variant="ghost"
-												size="icon-sm"
+										<div>
+											<p className="text-sm font-medium capitalize">
+												{user.role}
+											</p>
+											<p className="text-muted-foreground text-xs">
+												{user.team}
+											</p>
+										</div>
+
+										<div className="flex flex-col gap-1">
+											<span
+												className={`inline-flex w-fit items-center rounded-full px-2 py-1 text-xs font-medium ${
+													STATUS_STYLES[user.status]
+												}`}
 											>
-												<MoreVertical className="size-4" />
-												<span className="sr-only">
-													Open menu
-												</span>
-											</Button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											<DropdownMenuLabel>
-												Manage
-											</DropdownMenuLabel>
-											<DropdownMenuItem>
-												Edit details
-											</DropdownMenuItem>
-											<DropdownMenuItem>
-												Change role
-											</DropdownMenuItem>
-											<DropdownMenuItem>
-												Resend invitation
-											</DropdownMenuItem>
-											<DropdownMenuSeparator />
-											<DropdownMenuItem variant="destructive">
-												Revoke access
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
-								</div>
-							</li>
-						))}
-					</ul>
+												{user.status}
+											</span>
+											<span className="text-muted-foreground text-xs">
+												{user.lastActive}
+											</span>
+										</div>
 
-					{filteredUsers.length === 0 && (
-						<div className="flex flex-col items-center gap-2 px-6 py-12 text-center text-muted-foreground">
-							<p className="text-sm font-medium">
-								No users found
-							</p>
-							<p className="text-sm">
-								Adjust your filters or invite a new teammate.
-							</p>
-						</div>
+										<div className="flex justify-end">
+											<DropdownMenu>
+												<DropdownMenuTrigger asChild>
+													<Button
+														variant="ghost"
+														size="icon-sm"
+													>
+														<MoreVertical className="size-4" />
+														<span className="sr-only">
+															Open menu
+														</span>
+													</Button>
+												</DropdownMenuTrigger>
+												<DropdownMenuContent align="end">
+													<DropdownMenuLabel>
+														Manage
+													</DropdownMenuLabel>
+													<DropdownMenuItem>
+														Edit details
+													</DropdownMenuItem>
+													<DropdownMenuItem>
+														Change role
+													</DropdownMenuItem>
+													<DropdownMenuItem>
+														Resend invitation
+													</DropdownMenuItem>
+													<DropdownMenuSeparator />
+													<DropdownMenuItem variant="destructive">
+														Revoke access
+													</DropdownMenuItem>
+												</DropdownMenuContent>
+											</DropdownMenu>
+										</div>
+									</li>
+								))}
+							</ul>
+
+							{filteredUsers.length === 0 && (
+								<div className="flex flex-col items-center gap-2 px-6 py-12 text-center text-muted-foreground">
+									<p className="text-sm font-medium">
+										No users found
+									</p>
+									<p className="text-sm">
+										Adjust your filters or invite a new
+										teammate.
+									</p>
+								</div>
+							)}
+						</>
 					)}
 				</CardContent>
 			</Card>
