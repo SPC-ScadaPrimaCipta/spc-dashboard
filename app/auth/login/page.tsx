@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function LoginPage() {
 	const router = useRouter();
@@ -68,8 +69,7 @@ export default function LoginPage() {
 
 					<div className="space-y-1">
 						<Label>Password</Label>
-						<Input
-							type="password"
+						<PasswordInput
 							placeholder="••••••••"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
