@@ -10,7 +10,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, Loader2 } from "lucide-react";
 import {
 	Dialog,
 	DialogContent,
@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useRequirePermission } from "@/hooks/use-require-permission";
 
 interface Permission {
 	id: string;
@@ -31,6 +32,11 @@ interface Permission {
 }
 
 export default function PermissionsPage() {
+	const { isAuthorized, isLoading: authLoading } = useRequirePermission(
+		"read",
+		"permissions"
+	);
+
 	const [permissions, setPermissions] = useState<Permission[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [open, setOpen] = useState(false);
@@ -44,8 +50,10 @@ export default function PermissionsPage() {
 	const [submitting, setSubmitting] = useState(false);
 
 	useEffect(() => {
-		fetchPermissions();
-	}, []);
+		if (isAuthorized) {
+			fetchPermissions();
+		}
+	}, [isAuthorized]);
 
 	const fetchPermissions = async () => {
 		try {
@@ -59,6 +67,18 @@ export default function PermissionsPage() {
 			setLoading(false);
 		}
 	};
+
+	if (authLoading) {
+		return (
+			<div className="flex h-[50vh] w-full items-center justify-center">
+				<Loader2 className="size-8 animate-spin text-muted-foreground" />
+			</div>
+		);
+	}
+
+	if (!isAuthorized) {
+		return null;
+	}
 
 	const handleCreate = () => {
 		setEditingPermission(null);

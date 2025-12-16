@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { UserEditDialog } from "@/components/admin/user-edit-dialog";
 import { UserCreateDialog } from "@/components/admin/user-create-dialog";
+import { useRequirePermission } from "@/hooks/use-require-permission";
 
 // Basic types
 interface Role {
@@ -56,6 +57,12 @@ interface User {
 }
 
 export default function UsersPage() {
+	// Authorization - read:users
+	const { isAuthorized, isLoading: authLoading } = useRequirePermission(
+		"read",
+		"users"
+	);
+
 	const [users, setUsers] = useState<User[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState("");
@@ -70,8 +77,10 @@ export default function UsersPage() {
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 
 	useEffect(() => {
-		fetchUsers();
-	}, [search, page]);
+		if (isAuthorized) {
+			fetchUsers();
+		}
+	}, [search, page, isAuthorized]);
 
 	const fetchUsers = async () => {
 		setLoading(true);
@@ -94,6 +103,18 @@ export default function UsersPage() {
 			setLoading(false);
 		}
 	};
+
+	if (authLoading) {
+		return (
+			<div className="flex h-[50vh] w-full items-center justify-center">
+				<Loader2 className="size-8 animate-spin text-muted-foreground" />
+			</div>
+		);
+	}
+
+	if (!isAuthorized) {
+		return null; // Redirecting...
+	}
 
 	const handleBanUser = async (userId: string, isBanned: boolean) => {
 		if (

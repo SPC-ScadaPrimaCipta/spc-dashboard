@@ -9,10 +9,11 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Plus, Shield, Trash2, Edit } from "lucide-react";
+import { Plus, Shield, Trash2, Edit, Loader2 } from "lucide-react";
 
 import { RoleForm } from "@/components/admin/role-form";
 import { toast } from "sonner";
+import { useRequirePermission } from "@/hooks/use-require-permission";
 
 interface Role {
 	id: string;
@@ -31,14 +32,21 @@ interface Role {
 }
 
 export default function RolesPage() {
+	const { isAuthorized, isLoading: authLoading } = useRequirePermission(
+		"read",
+		"roles"
+	);
+
 	const [roles, setRoles] = useState<Role[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [editingRole, setEditingRole] = useState<Role | null>(null);
 
 	useEffect(() => {
-		fetchRoles();
-	}, []);
+		if (isAuthorized) {
+			fetchRoles();
+		}
+	}, [isAuthorized]);
 
 	const fetchRoles = async () => {
 		try {
@@ -51,6 +59,18 @@ export default function RolesPage() {
 			setLoading(false);
 		}
 	};
+
+	if (authLoading) {
+		return (
+			<div className="flex h-[50vh] w-full items-center justify-center">
+				<Loader2 className="size-8 animate-spin text-muted-foreground" />
+			</div>
+		);
+	}
+
+	if (!isAuthorized) {
+		return null;
+	}
 
 	const handleCreate = () => {
 		setEditingRole(null);
