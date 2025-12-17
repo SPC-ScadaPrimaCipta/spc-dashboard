@@ -2,7 +2,8 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "@/lib/prisma";
 import { nextCookies } from "better-auth/next-js";
-import { admin } from "better-auth/plugins";
+import { admin as adminPlugin, customSession } from "better-auth/plugins";
+import { ac, admin, superadmin, user } from "@/lib/permissions";
 
 // ---- BETTER AUTH CONFIG ----
 export const auth = betterAuth({
@@ -21,6 +22,18 @@ export const auth = betterAuth({
 		enabled: true,
 	},
 
+	socialProviders: {
+		microsoft: {
+			clientId: process.env.MICROSOFT_CLIENT_ID as string,
+			clientSecret: process.env.MICROSOFT_CLIENT_SECRET as string,
+			tenantId: "866bbb0d-62fc-42ab-bbc2-51355e965c88",
+			// Optional
+			// tenantId: 'common', // use common for all tenants
+			// authority: "https://login.microsoftonline.com", // Authentication authority URL
+			// prompt: "select_account", // Forces account selection
+		},
+	},
+
 	// Use Prisma + PostgreSQL
 	database: prismaAdapter(prisma, {
 		provider: "postgresql",
@@ -33,5 +46,51 @@ export const auth = betterAuth({
 	],
 
 	// Required for Next.js App Router cookie handling
-	plugins: [nextCookies(), admin()],
+	plugins: [
+		nextCookies(),
+		adminPlugin({
+			ac,
+			roles: {
+				admin,
+				superadmin,
+				user,
+			},
+			defaultRole: "user",
+			adminRoles: ["admin", "superadmin"],
+		}),
+		// Custom session plugin to inject roles and permissions
+		customSession(async ({ user, session }) => {
+			// Fetch roles and permissions for this user
+			const userData = await prisma.user.findUnique({
+				where: { id: user.id },
+				include: {
+					roles: {
+						include: {
+							permissions: true,
+						},
+					},
+				},
+			});
+
+			if (!userData) {
+				return { user, session };
+			}
+
+			const allPermissions = new Set<string>();
+			userData.roles.forEach((role) => {
+				role.permissions.forEach((p) => {
+					allPermissions.add(`${p.action}:${p.resource}`);
+				});
+			});
+
+			return {
+				user: {
+					...user,
+					roles: userData.roles.map((r) => r.name),
+					permissions: Array.from(allPermissions),
+				},
+				session,
+			};
+		}),
+	],
 });

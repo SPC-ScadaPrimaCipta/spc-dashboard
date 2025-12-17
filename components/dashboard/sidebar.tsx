@@ -15,22 +15,46 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
-import { SetStateAction, useEffect, useRef, useState } from "react";
+import { SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
-const menu = [
+import { authClient } from "@/lib/auth-client";
+
+type MenuItem = {
+	name: string;
+	href: string;
+	icon: any;
+	permissions?: {
+		resource: string;
+		action: "read" | "create" | "update" | "delete" | "manage";
+	}[];
+	children?: MenuItem[];
+};
+
+const rawMenu: MenuItem[] = [
 	{ name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
 	{
 		name: "Admin",
 		href: "/admin",
 		icon: ShieldCheck,
 		children: [
-			{ name: "Users", href: "/users", icon: User },
-			{ name: "Roles", href: "/admin/roles", icon: UserCircle },
+			{
+				name: "Users",
+				href: "/admin/users",
+				icon: User,
+				permissions: [{ resource: "users", action: "read" }],
+			},
+			{
+				name: "Roles",
+				href: "/admin/roles",
+				icon: UserCircle,
+				permissions: [{ resource: "roles", action: "read" }],
+			},
 			{
 				name: "Permissions",
 				href: "/admin/permissions",
 				icon: ShieldCheck,
+				permissions: [{ resource: "permissions", action: "read" }],
 			},
 		],
 	},
@@ -55,10 +79,61 @@ export function Sidebar() {
 	const { collapsed, setCollapsed } = useSidebar();
 	const sidebarRef = useRef<HTMLDivElement | null>(null);
 	const pathname = usePathname();
+	const { data: session } = authClient.useSession();
 
 	function isActive(href: string) {
 		return pathname === href || pathname.startsWith(href + "/");
 	}
+
+	const menu = useMemo(() => {
+		const userPermissions = new Set<string>(
+			(session?.user as any)?.permissions || []
+		);
+
+		// Helper to check if user has ALL required permissions for an item
+		const hasAccess = (
+			required?: { resource: string; action: string }[]
+		) => {
+			if (!required || required.length === 0) return true;
+
+			// Superadmin bypass: "manage:all" grants access to everything
+			if (userPermissions.has("manage:all")) return true;
+
+			// For "manage", check if we have the specific permission OR if we are admin/superadmin
+			// Although typically better-auth permissions are explicit.
+			// We'll check for explicit permission "action:resource"
+			return required.every((p) =>
+				userPermissions.has(`${p.action}:${p.resource}`)
+			);
+		};
+
+		const filterItems = (items: MenuItem[]): MenuItem[] => {
+			return items
+				.map((item) => {
+					// Check children first
+					if (item.children) {
+						const visibleChildren = filterItems(item.children);
+						if (visibleChildren.length > 0) {
+							return { ...item, children: visibleChildren };
+						}
+						// If parent has specific permissions, check them even if children are empty?
+						// Usually if it's a section header like "Admin", we hide it if no children.
+						// If it's a clickable page that also has sub-pages, we might keep it.
+						// Here "Admin" is just a grouper.
+						return null;
+					}
+
+					// Leaf node
+					if (hasAccess(item.permissions)) {
+						return item;
+					}
+					return null;
+				})
+				.filter((item) => item !== null) as MenuItem[];
+		};
+
+		return filterItems(rawMenu);
+	}, [session]);
 
 	// Manage which accordion is open
 	const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -66,17 +141,15 @@ export function Sidebar() {
 	// Auto-expand menu based on URL
 	useEffect(() => {
 		const parent = menu.find((m) =>
-			m.children?.some((c) => pathname.startsWith(c.href))
+			m.children?.some(
+				(c) => pathname === c.href || pathname.startsWith(c.href + "/")
+			)
 		);
 
-		const openMenu = (parent: { href: SetStateAction<string | null> }) => {
-			if (parent) setOpenMenu(parent.href);
-		};
-
 		if (parent) {
-			openMenu(parent);
+			setOpenMenu(parent.href);
 		}
-	}, [pathname]);
+	}, [pathname, menu]);
 
 	// Close on mobile
 	useEffect(() => {
@@ -140,6 +213,9 @@ export function Sidebar() {
 					// --------------------
 					if (m.children) {
 						const menuOpen = openMenu === m.href;
+						const isChildActive = m.children.some((child) =>
+							isActive(child.href)
+						);
 
 						return (
 							<div key={m.href}>
@@ -149,10 +225,12 @@ export function Sidebar() {
 									}
 									className={`
                     w-full flex items-center gap-3 px-6 py-2 rounded-md text-sm
-                    transition-all duration-300
+                    transition-all duration-300 hover:bg-muted
                     ${
-						isActive(m.href)
-							? "bg-muted text-primary font-medium"
+						isChildActive
+							? "text-primary font-medium"
+							: isActive(m.href)
+							? "bg-muted text-primary font-medium "
 							: "text-muted-foreground hover:bg-muted"
 					}
                   `}
@@ -174,11 +252,12 @@ export function Sidebar() {
 
 									{!collapsed && (
 										<span className="ml-auto">
-											{menuOpen ? (
-												<ChevronDown size={16} />
-											) : (
-												<ChevronRight size={16} />
-											)}
+											<ChevronRight
+												size={16}
+												className={`transition-transform duration-200 ${
+													menuOpen ? "rotate-90" : ""
+												}`}
+											/>
 										</span>
 									)}
 								</button>
@@ -199,10 +278,10 @@ export function Sidebar() {
 													key={sub.href}
 													href={sub.href}
 													className={`
-                            flex items-center gap-2 px-4 py-2 rounded-md text-sm
+                            flex items-center gap-2 px-4 py-2 rounded-md text-sm my-2
                             ${
 								isActive(sub.href)
-									? "text-primary font-medium"
+									? "text-primary font-medium bg-muted"
 									: "text-muted-foreground hover:bg-muted"
 							}
                           `}
