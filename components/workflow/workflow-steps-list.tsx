@@ -14,7 +14,6 @@ import {
 	Ban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { AddStepDialog, DraftStep } from "./add-step-dialog";
@@ -32,6 +31,7 @@ export type Step = {
 	can_send_back: boolean;
 	reject_target_type: string;
 	reject_target_step_id: string | null;
+	resolved_approvers: Record<string, any>[] | null;
 };
 
 type WorkflowStepsListProps = {
@@ -83,9 +83,11 @@ export function WorkflowStepsList({
 				nextOrder={steps.length + 1}
 			/>
 
-			<div className="relative pl-6 space-y-8">
+			<div className="relative md:pl-6 space-y-8">
 				{/* Vertical Line Container */}
-				<div className="absolute left-6 top-28 bottom-16 w-px bg-border -z-10" />
+				{steps.length > 0 && (
+					<div className="absolute left-1/2 md:left-6 top-0 bottom-0 w-px bg-border -z-10" />
+				)}
 
 				{steps.length === 0 && (
 					<div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
@@ -94,105 +96,100 @@ export function WorkflowStepsList({
 				)}
 
 				{steps.map((step, index) => (
-					<div key={index} className="relative pl-8">
+					<div key={index} className="relative md:pl-8">
 						{/* Connector Dot */}
 						<div
-							className={`absolute left-0 top-1/2 rounded-full border-4 border-background bg-primary w-5 h-5 -ml-2.5`}
+							className={`hidden md:block absolute left-0 top-1/2 rounded-full border-4 border-background bg-primary w-5 h-5 -ml-2.5`}
 						/>
 
 						<Card className="group relative transition-all hover:shadow-md border-muted-foreground/20">
-							<CardContent className="p-5 flex items-start gap-4">
+							<CardContent className="px-5 flex flex-col md:flex-row items-start gap-4">
 								{/* Step Order Circle */}
 								<div className="shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
 									{step.step_order}
 								</div>
 
+								<div className="absolute top-0 right-0 items-center gap-1 pt-7 md:pt-5 pr-5">
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-8 w-8"
+										onClick={() =>
+											onMoveStep(
+												step.step_order - 1,
+												"up"
+											)
+										}
+										disabled={step.step_order === 1}
+									>
+										<ArrowUp className="h-4 w-4" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-8 w-8"
+										onClick={() =>
+											onMoveStep(
+												step.step_order - 1,
+												"down"
+											)
+										}
+										disabled={
+											step.step_order === steps.length
+										}
+									>
+										<ArrowDown className="h-4 w-4" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-8 w-8 text-destructive hover:text-destructive"
+										onClick={() =>
+											onDeleteStep(step.step_order - 1)
+										}
+									>
+										<Trash2 className="h-4 w-4" />
+									</Button>
+								</div>
+
 								<div className="flex-1 space-y-1">
-									<div className="flex items-center justify-between">
-										<h3 className="font-semibold text-lg">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+										<h3 className="font-semibold text-lg wrap-break-word">
 											{step.name}
 										</h3>
-										<div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8"
-												onClick={() =>
-													onMoveStep(
-														step.step_order - 1,
-														"up"
-													)
-												}
-												disabled={step.step_order === 1}
-											>
-												<ArrowUp className="h-4 w-4" />
-											</Button>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8"
-												onClick={() =>
-													onMoveStep(
-														step.step_order - 1,
-														"down"
-													)
-												}
-												disabled={
-													step.step_order ===
-													steps.length
-												}
-											>
-												<ArrowDown className="h-4 w-4" />
-											</Button>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8 text-destructive hover:text-destructive"
-												onClick={() =>
-													onDeleteStep(
-														step.step_order - 1
-													)
-												}
-											>
-												<Trash2 className="h-4 w-4" />
-											</Button>
-										</div>
 									</div>
-									<p className="text-xs font-mono text-muted-foreground bg-muted inline-block px-1.5 py-0.5 rounded">
+									<p className="text-xs font-mono text-muted-foreground bg-muted inline-block px-1.5 py-0.5 rounded mt-1">
 										KEY: {step.step_key}
 									</p>
 
-									<div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 text-sm">
 										<div className="flex items-center gap-2 text-muted-foreground">
-											<Users className="h-4 w-4" />
+											<Users className="h-4 w-4 shrink-0" />
 											<span>Approver Category:</span>
 											<span className="font-medium text-foreground">
 												{step.approver_strategy}
 											</span>
 										</div>
 										<div className="flex items-center gap-2 text-muted-foreground">
-											<User className="h-4 w-4" />
+											<User className="h-4 w-4 shrink-0" />
 											{/* <span>Value:</span> */}
 											<div className="flex flex-wrap gap-1">
-												{(
-													step.approver_label ||
-													step.approver_value
-												)
-													.split(",")
-													.map((val, idx) => (
+												{step.resolved_approvers?.map(
+													(val, idx) => (
 														<Badge
 															key={idx}
 															variant="secondary"
 															className="px-1.5 py-0 h-5 font-normal"
 														>
-															{val.trim()}
+															{val.name.trim()}
 														</Badge>
-													))}
+													)
+												)}
 											</div>
 										</div>
 
 										<div className="flex items-center gap-2 text-muted-foreground">
-											<CheckSquare className="h-4 w-4" />
+											<CheckSquare className="h-4 w-4 shrink-0" />
 											<span>Approval Mode:</span>
 											<span className="font-medium text-foreground">
 												{step.approval_mode}
@@ -202,7 +199,7 @@ export function WorkflowStepsList({
 										<div className="flex items-center gap-2 text-muted-foreground">
 											{step.can_send_back ? (
 												<>
-													<RotateCcw className="h-4 w-4" />
+													<RotateCcw className="h-4 w-4 shrink-0" />
 													<span>Sendback Mode:</span>
 													<span className="font-medium text-foreground">
 														{step.reject_target_type ===
@@ -227,7 +224,7 @@ export function WorkflowStepsList({
 												</>
 											) : (
 												<>
-													<Ban className="h-4 w-4" />
+													<Ban className="h-4 w-4 shrink-0" />
 													<span className="font-medium text-foreground">
 														Cannot send back
 													</span>

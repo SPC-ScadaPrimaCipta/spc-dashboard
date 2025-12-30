@@ -191,9 +191,9 @@ export default function WorkflowDetailPage() {
 	}
 
 	return (
-		<div className="max-w-5xl mx-auto py-8 px-4 space-y-8">
+		<div className="max-w-5xl mx-auto md:py-8 md:px-4 space-y-8">
 			{/* Top Navigation */}
-			<div className="flex items-center justify-between">
+			<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
 				<Button
 					variant="ghost"
 					className="pl-0 hover:pl-2 transition-all"
@@ -204,9 +204,10 @@ export default function WorkflowDetailPage() {
 						Back to Listings
 					</Link>
 				</Button>
-				<div className="flex gap-2">
+				<div className="flex gap-2 w-full sm:w-auto">
 					{/* Save Changes Button */}
 					<Button
+						className="w-full sm:w-auto"
 						onClick={handleSaveChanges}
 						disabled={isSaving || loading}
 					>
@@ -228,9 +229,9 @@ export default function WorkflowDetailPage() {
 			{/* 1. Top Section: Workflow Details */}
 			<Card className="bg-muted/40 border-dashed">
 				<CardHeader>
-					<div className="flex justify-between items-start">
+					<div className="flex flex-col md:flex-row justify-between items-start gap-4">
 						<div>
-							<CardTitle className="text-3xl font-bold flex items-center gap-3">
+							<CardTitle className="text-2xl md:text-3xl font-bold flex flex-wrap items-center gap-2 md:gap-3">
 								{workflow.name}
 								<Badge variant="outline" className="text-sm">
 									v{workflow.version}
@@ -242,7 +243,7 @@ export default function WorkflowDetailPage() {
 											: "secondary"
 									}
 								>
-									{workflow.is_active ? "Active" : "Draft"}
+									{workflow.is_active ? "Active" : "Inactive"}
 								</Badge>
 							</CardTitle>
 							<CardDescription className="mt-2 text-base">
@@ -250,7 +251,7 @@ export default function WorkflowDetailPage() {
 									"No description provided."}
 							</CardDescription>
 						</div>
-						<div className="text-right text-sm text-muted-foreground">
+						<div className="text-left md:text-right text-sm text-muted-foreground w-full md:w-auto">
 							<p>Code: {workflow.code}</p>
 							<p>
 								Created:{" "}

@@ -39,6 +39,7 @@ export type DraftStep = {
 	can_send_back: boolean;
 	reject_target_type: string;
 	reject_target_step_id: string | null;
+	resolved_approvers: Record<string, any>[] | null;
 };
 
 type Props = {
@@ -80,6 +81,7 @@ export function AddStepDialog({
 			reject_target_type: rejectTargetType,
 			reject_target_step_id:
 				rejectTargetType === "SPECIFIC" ? rejectTargetStepId : null,
+			resolved_approvers: null,
 		};
 
 		onAddStep(step);
@@ -121,7 +123,7 @@ export function AddStepDialog({
 						/>
 					</div>
 
-					<div className="grid grid-cols-2 gap-4">
+					<div className="grid md:grid-cols-2 gap-4">
 						<div className="space-y-2">
 							<Label>Approver Type</Label>
 							<Select
@@ -211,7 +213,7 @@ export function AddStepDialog({
 					</div>
 
 					{canSendBack && (
-						<div className="grid grid-cols-2 gap-4 pt-2 border-t">
+						<div className="grid md:grid-cols-2 gap-4 pt-2 border-t">
 							<div className="space-y-2">
 								<Label>Sendback Mode</Label>
 								<Select

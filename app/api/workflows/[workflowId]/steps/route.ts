@@ -155,19 +155,98 @@ export async function GET(
 		orderBy: { step_order: "asc" },
 	});
 
-	// Parse valid JSON strings back to CSV for frontend compatibility
-	const processedSteps = steps.map((s) => {
+	const processedSteps = await resolveWorkflowStepApprovers(steps);
+
+	return NextResponse.json(processedSteps);
+}
+
+// Helper function to resolve approvers
+async function resolveWorkflowStepApprovers(steps: any[]) {
+	// Collect IDs/Codes to resolve
+	const userIds = new Set<string>();
+	const roleCodes = new Set<string>();
+
+	steps.forEach((step) => {
+		let values: string[] = [];
+		try {
+			const parsed = JSON.parse(step.approver_value);
+			if (Array.isArray(parsed)) {
+				values = parsed;
+			} else {
+				values = [String(parsed)];
+			}
+		} catch {
+			values = [step.approver_value];
+		}
+
+		if (step.approver_strategy === "USER") {
+			values.forEach((v) => {
+				if (v) userIds.add(v);
+			});
+		} else if (step.approver_strategy === "ROLE") {
+			values.forEach((v) => {
+				if (v) roleCodes.add(v);
+			});
+		}
+	});
+
+	// Fetch Data
+	const users =
+		userIds.size > 0
+			? await prisma.user.findMany({
+					where: { id: { in: Array.from(userIds) } },
+					select: { id: true, name: true, email: true, image: true },
+			  })
+			: [];
+
+	const roles =
+		roleCodes.size > 0
+			? await prisma.role.findMany({
+					where: {
+						OR: [
+							{ name: { in: Array.from(roleCodes) } },
+							{ id: { in: Array.from(roleCodes) } },
+						],
+					},
+					select: { id: true, name: true, description: true },
+			  })
+			: [];
+
+	// Map Data
+	const userMap = new Map(users.map((u) => [u.id, u]));
+
+	// Process steps
+	return steps.map((s) => {
 		let val = s.approver_value;
+		let parsedValues: string[] = [];
 		try {
 			const parsed = JSON.parse(val);
 			if (Array.isArray(parsed)) {
 				val = parsed.join(",");
+				parsedValues = parsed;
+			} else {
+				parsedValues = [String(parsed)];
 			}
 		} catch (e) {
-			// Not JSON, keep as is
+			parsedValues = [val];
 		}
-		return { ...s, approver_value: val };
-	});
 
-	return NextResponse.json(processedSteps);
+		let resolved_approvers: any[] = [];
+
+		if (s.approver_strategy === "USER") {
+			resolved_approvers = parsedValues
+				.map((id) => userMap.get(id))
+				.filter((u) => u !== undefined);
+		} else if (s.approver_strategy === "ROLE") {
+			resolved_approvers = parsedValues
+				.map((v) => roles.find((r) => r.name === v || r.id === v))
+				.filter((r) => r !== undefined);
+		}
+
+		return {
+			...s,
+			approver_value: val,
+			resolved_approvers, // Send resolved objects to frontend
+		};
+	});
 }

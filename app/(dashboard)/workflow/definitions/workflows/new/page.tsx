@@ -93,7 +93,7 @@ export default function NewWorkflowPage() {
 	}
 
 	return (
-		<div className="max-w-2xl mx-auto py-8 px-4">
+		<div className="max-w-2xl mx-auto py-8 md:px-4">
 			<div className="mb-6">
 				<Button
 					variant="ghost"
