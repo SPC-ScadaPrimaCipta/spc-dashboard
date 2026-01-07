@@ -1,0 +1,14 @@
+services:
+    web:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: next-dashboard-template
+        ports:
+            - "3002:3002"
+        environment:
+            DATABASE_URL: ""
+            BETTER_AUTH_SECRET: ""
+            BETTER_AUTH_URL: "http://localhost:3002"
+            MICROSOFT_CLIENT_ID: ""
+            MICROSOFT_CLIENT_SECRET: ""

@@ -4,8 +4,9 @@ import { hasPermission } from "@/lib/rbac";
 
 export async function GET(
 	req: Request,
-	{ params }: { params: { id: string } }
+	props: { params: Promise<{ id: string }> }
 ) {
+	const params = await props.params;
 	const canRead = await hasPermission("read", "workflow_instances");
 	if (!canRead) {
 		return new NextResponse("Forbidden", { status: 403 });

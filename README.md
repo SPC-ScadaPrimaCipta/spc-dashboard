@@ -62,14 +62,11 @@ BETTER_AUTH_SECRET="your_secret_here"
 
 ### 4. Database Setup
 
-To get started, you need to push the schema to your database and seed it with initial data (like roles and permissions).
+To get started, you need to migrate the schema to your database.
 
 ```bash
 # Push the database schema
-npx prisma db push
-
-# Seed the database
-npx prisma db seed
+npx prisma migrate reset
 ```
 
 ### 5. Create a Superadmin User
