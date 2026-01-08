@@ -15,6 +15,7 @@ import {
 	HeartPulse,
 	FileSearch,
 	HelpCircle,
+	FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
@@ -36,6 +37,11 @@ type MenuItem = {
 
 const rawMenu: MenuItem[] = [
 	{ name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+	{
+		name: "Proposals",
+		href: "/proposals",
+		icon: FileText,
+	},
 	{
 		name: "Admin",
 		href: "/admin",
