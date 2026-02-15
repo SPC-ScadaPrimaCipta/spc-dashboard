@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BoxIcon } from "lucide-react";
+import { MicrosoftLogo } from "@/components/icons/microsoft-logo";
 
 export default function LoginPage() {
 	const router = useRouter();
@@ -117,7 +117,7 @@ export default function LoginPage() {
 						onClick={handleMicrosoftLogin}
 						disabled={loading}
 					>
-						<BoxIcon />
+						<MicrosoftLogo className="w-5 h-5" />
 						Continue with Microsoft
 					</Button>
 

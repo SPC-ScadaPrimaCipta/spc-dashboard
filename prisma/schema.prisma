@@ -257,6 +257,9 @@ model Attachment {
   uploadedBy  String
   createdAt   DateTime @default(now())
 
+  spDriveId   String?
+  spDriveUrl  String?
+
   @@index([refType, refId])
   @@map("attachment")
 }
