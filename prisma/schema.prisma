@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -23,6 +23,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   roles         Role[]    @relation("RoleToUser")
+  taskAssignments TaskAssignment[]
 
   @@map("user")
 }
@@ -262,4 +263,188 @@ model Attachment {
 
   @@index([refType, refId])
   @@map("attachment")
+}
+
+// ---- Enums that are usually stable ----
+enum TaskType {
+  TASK
+  MILESTONE
+  SUMMARY
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskAuditAction {
+  CREATE
+  UPDATE
+  STATUS_CHANGE
+  ASSIGN
+  UNASSIGN
+  COMMENT
+  DELETE
+}
+
+// ---- MASTER TABLE for dynamic statuses ----
+model TaskStatus {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique // stable system key: TODO, IN_PROGRESS, DONE, etc.
+  name        String   // display name (can be changed)
+  description String?
+
+  // Behavior flags (useful later)
+  isTerminal  Boolean  @default(false) // e.g., DONE/CANCELLED
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  tasks       Task[]
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([isActive, sortOrder])
+}
+
+model Task {
+  id          String        @id @default(uuid()) @db.Uuid
+
+  parentTaskId String?      @db.Uuid
+  parentTask   Task?        @relation("TaskParent", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  children     Task[]       @relation("TaskParent")
+
+  title       String
+  description String?
+
+  type        TaskType      @default(TASK)
+  priority    TaskPriority  @default(MEDIUM)
+
+  // Status via master table (dynamic)
+  statusId    String        @db.Uuid
+  status      TaskStatus    @relation(fields: [statusId], references: [id])
+
+  // Scheduling (calendar/gantt)
+  startAt     DateTime?
+  endAt       DateTime?
+  allDay      Boolean       @default(false)
+  timezone    String?
+  durationMin Int?
+
+  // Gantt progress
+  progress    Int           @default(0) // 0..100
+
+  // Assignments
+  assignments TaskAssignment[]
+
+  // Comments + audit
+  comments    TaskComment[]
+  audits      TaskAuditTrail[]
+
+  // Visual attributes
+  color       String?       @db.VarChar(20)
+  labels      TaskLabel[]
+
+  // Auditable columns
+  createdAt   DateTime      @default(now())
+  createdById String?
+  updatedAt   DateTime      @updatedAt
+  updatedById String?
+
+  @@index([statusId])
+  @@index([parentTaskId])
+  @@index([startAt, endAt])
+}
+
+model TaskComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @db.Uuid
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  body      String
+  isEdited  Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  createdById String
+
+  updatedAt DateTime @updatedAt
+  updatedById String?
+
+  @@index([taskId, createdAt])
+}
+
+model TaskAuditTrail {
+  id        String          @id @default(uuid()) @db.Uuid
+  taskId    String          @db.Uuid
+  task      Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  action    TaskAuditAction
+  message   String?
+
+  // Generic “diff” payload (super useful & future-proof)
+  // Examples:
+  // { "field": "title", "from": "A", "to": "B" }
+  // { "status": { "from": "TODO", "to": "DONE" } }
+  data      Json?
+
+  // Who/when
+  at        DateTime        @default(now())
+  byUserId  String?
+
+  @@index([taskId, at])
+  @@index([action, at])
+}
+
+model Label {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String
+
+  // optional styling
+  color     String?
+
+  taskLinks TaskLabel[]
+
+  createdAt DateTime @default(now())
+  createdById String?
+  updatedAt DateTime @updatedAt
+  updatedById String?
+
+  @@unique([slug])
+}
+
+model TaskLabel {
+  taskId  String @db.Uuid
+  labelId String @db.Uuid
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+  assignedById String?
+
+  @@id([taskId, labelId])
+  @@index([labelId])
+}
+
+model TaskAssignment {
+  id           String   @id @default(uuid()) @db.Uuid
+
+  taskId       String   @db.Uuid
+  assigneeId   String
+
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignee     User     @relation(fields: [assigneeId], references: [id], onDelete: Cascade)
+
+  assignedAt   DateTime @default(now())
+  assignedById String?
+
+  @@unique([taskId, assigneeId]) // prevent duplicate assignment
+  @@index([assigneeId])
+  @@index([taskId])
+  @@index([assigneeId, taskId])
 }
