@@ -4,7 +4,7 @@ import { hasPermission } from "@/lib/rbac";
 
 export async function PUT(
 	req: Request,
-	{ params }: { params: Promise<{ id: string }> }
+	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
 
@@ -33,7 +33,7 @@ export async function PUT(
 			where: { id },
 			data: {
 				roles: {
-					set: dbRoles.map((r) => ({ id: r.id })),
+					set: dbRoles.map((r: { id: string }) => ({ id: r.id })),
 				},
 			},
 		});
