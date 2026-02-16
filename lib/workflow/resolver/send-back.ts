@@ -1,4 +1,4 @@
-import { workflow_step } from "@/generated/prisma/client";
+import { workflow_step } from "@prisma/client";
 
 /**
  * Resolve which step a SEND_BACK should go to
@@ -6,7 +6,7 @@ import { workflow_step } from "@/generated/prisma/client";
 export function resolveSendBackStep(
 	currentStep: workflow_step,
 	steps: workflow_step[],
-	currentIndex: number
+	currentIndex: number,
 ): workflow_step {
 	switch (currentStep.reject_target_type) {
 		case "PREVIOUS": {
@@ -25,7 +25,7 @@ export function resolveSendBackStep(
 				throw new Error("reject_target_step_id is not set");
 			}
 			const target = steps.find(
-				(s) => s.id === currentStep.reject_target_step_id
+				(s) => s.id === currentStep.reject_target_step_id,
 			);
 			if (!target) {
 				throw new Error("Target step not found");
