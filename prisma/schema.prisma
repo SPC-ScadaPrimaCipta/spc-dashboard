@@ -1,0 +1,450 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  banExpires    DateTime?
+  banReason     String?
+  banned        Boolean?  @default(false)
+  role          String?
+  accounts      Account[]
+  sessions      Session[]
+  roles         Role[]    @relation("RoleToUser")
+  taskAssignments TaskAssignment[]
+
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime
+  token          String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  impersonatedBy String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  permissions Permission[] @relation("PermissionToRole")
+  users       User[]       @relation("RoleToUser")
+
+  @@map("role")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  action      String
+  resource    String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  roles       Role[]   @relation("PermissionToRole")
+
+  @@unique([action, resource])
+  @@map("permission")
+}
+
+model workflow {
+  id                String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code              String              @db.VarChar(100)
+  name              String              @db.VarChar(255)
+  version           Int
+  description       String?
+  is_active         Boolean             @default(true)
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  created_by        String
+  updated_at        DateTime?           @db.Timestamptz(6)
+  updated_by        String?
+  workflow_step     workflow_step[]
+  workflow_instance workflow_instance[]
+
+  @@unique([code, version], map: "uq_workflow_code_version")
+}
+
+model workflow_action_log {
+  id                      String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workflow_instance_id    String            @db.Uuid
+  action                  workflow_action
+  from_step_id            String?           @db.Uuid
+  to_step_id              String?           @db.Uuid
+  actor_id                String
+  comment                 String?
+  metadata                Json?
+  created_at              DateTime          @default(now()) @db.Timestamptz(6)
+  from_step               workflow_step?    @relation("from_step", fields: [from_step_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  to_step                 workflow_step?    @relation("to_step", fields: [to_step_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_instance       workflow_instance @relation(fields: [workflow_instance_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([workflow_instance_id], map: "idx_action_log_instance")
+}
+
+model workflow_instance {
+  id                     String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workflow_id            String                   @db.Uuid
+  workflow_version       Int
+  ref_type               String                   @db.VarChar(100)
+  ref_id                 String                   @db.VarChar(255)
+  status                 workflow_status          @default(DRAFT)
+  current_step_id        String?                  @db.Uuid
+  created_by             String
+  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  workflow_action_log    workflow_action_log[]
+  workflow_step          workflow_step?           @relation(fields: [current_step_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow               workflow                 @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_step_instance workflow_step_instance[]
+
+  @@unique([ref_type, ref_id], map: "uq_workflow_instance_ref")
+  @@index([status], map: "idx_workflow_instance_status")
+}
+
+model workflow_step {
+  id                        String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workflow_id               String                   @db.Uuid
+  step_key                  String                   @db.VarChar(50)
+  step_order                Int
+  name                      String                   @db.VarChar(255)
+  approver_strategy         approver_strategy
+  approver_value            String                   @db.VarChar(255)
+  approval_mode             approval_mode            @default(ANY)
+  can_send_back             Boolean                  @default(true)
+  reject_target_type        reject_target_type
+  reject_target_step_id     String?                  @db.Uuid
+  is_terminal               Boolean                  @default(false)
+  from_action_logs          workflow_action_log[]    @relation("from_step")
+  to_action_logs            workflow_action_log[]    @relation("to_step")
+  workflow_instance         workflow_instance[]
+  workflow                  workflow                 @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_step_instance    workflow_step_instance[]
+
+  @@unique([workflow_id, step_key], map: "uq_workflow_step_key")
+  @@unique([workflow_id, step_order], map: "uq_workflow_step_order")
+}
+
+model workflow_step_instance {
+  id                   String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  workflow_instance_id String               @db.Uuid
+  step_id              String               @db.Uuid
+  status               workflow_step_status @default(PENDING)
+  assigned_to          Json                 @default("[]")
+  acted_by             String?
+  acted_at             DateTime?            @db.Timestamptz(6)
+  comment              String?
+  created_at           DateTime             @default(now()) @db.Timestamptz(6)
+  step                 workflow_step        @relation(fields: [step_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflow_instance    workflow_instance    @relation(fields: [workflow_instance_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([assigned_to], map: "idx_step_instance_assigned_to", type: Gin)
+}
+
+enum approval_mode {
+  ANY
+  ALL
+}
+
+enum approver_strategy {
+  USER
+  ROLE
+  DYNAMIC
+  MULTI
+}
+
+enum reject_target_type {
+  PREVIOUS
+  SUBMITTER
+  SPECIFIC
+}
+
+enum workflow_action {
+  SUBMIT
+  APPROVE
+  REJECT
+  SEND_BACK
+  CANCEL
+}
+
+enum workflow_status {
+  DRAFT
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum workflow_step_status {
+  PENDING
+  APPROVED
+  REJECTED
+  SKIPPED
+}
+
+model ProjectProposal {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  budget      Decimal? @db.Decimal(10, 2)
+  status      String   @default("DRAFT")
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("project_proposal")
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  name        String
+  url         String
+  type        String
+  size        Int
+  refType     String
+  refId       String
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+
+  spDriveId   String?
+  spDriveUrl  String?
+
+  @@index([refType, refId])
+  @@map("attachment")
+}
+
+// ---- Enums that are usually stable ----
+enum TaskType {
+  TASK
+  MILESTONE
+  SUMMARY
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskAuditAction {
+  CREATE
+  UPDATE
+  STATUS_CHANGE
+  ASSIGN
+  UNASSIGN
+  COMMENT
+  DELETE
+}
+
+// ---- MASTER TABLE for dynamic statuses ----
+model TaskStatus {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique // stable system key: TODO, IN_PROGRESS, DONE, etc.
+  name        String   // display name (can be changed)
+  description String?
+
+  // Behavior flags (useful later)
+  isTerminal  Boolean  @default(false) // e.g., DONE/CANCELLED
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  tasks       Task[]
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([isActive, sortOrder])
+}
+
+model Task {
+  id          String        @id @default(uuid()) @db.Uuid
+
+  parentTaskId String?      @db.Uuid
+  parentTask   Task?        @relation("TaskParent", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  children     Task[]       @relation("TaskParent")
+
+  title       String
+  description String?
+
+  type        TaskType      @default(TASK)
+  priority    TaskPriority  @default(MEDIUM)
+
+  // Status via master table (dynamic)
+  statusId    String        @db.Uuid
+  status      TaskStatus    @relation(fields: [statusId], references: [id])
+
+  // Scheduling (calendar/gantt)
+  startAt     DateTime?
+  endAt       DateTime?
+  allDay      Boolean       @default(false)
+  timezone    String?
+  durationMin Int?
+
+  // Gantt progress
+  progress    Int           @default(0) // 0..100
+
+  // Assignments
+  assignments TaskAssignment[]
+
+  // Comments + audit
+  comments    TaskComment[]
+  audits      TaskAuditTrail[]
+
+  // Visual attributes
+  color       String?       @db.VarChar(20)
+  labels      TaskLabel[]
+
+  // Auditable columns
+  createdAt   DateTime      @default(now())
+  createdById String?
+  updatedAt   DateTime      @updatedAt
+  updatedById String?
+
+  @@index([statusId])
+  @@index([parentTaskId])
+  @@index([startAt, endAt])
+}
+
+model TaskComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @db.Uuid
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  body      String
+  isEdited  Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  createdById String
+
+  updatedAt DateTime @updatedAt
+  updatedById String?
+
+  @@index([taskId, createdAt])
+}
+
+model TaskAuditTrail {
+  id        String          @id @default(uuid()) @db.Uuid
+  taskId    String          @db.Uuid
+  task      Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  action    TaskAuditAction
+  message   String?
+
+  // Generic “diff” payload (super useful & future-proof)
+  // Examples:
+  // { "field": "title", "from": "A", "to": "B" }
+  // { "status": { "from": "TODO", "to": "DONE" } }
+  data      Json?
+
+  // Who/when
+  at        DateTime        @default(now())
+  byUserId  String?
+
+  @@index([taskId, at])
+  @@index([action, at])
+}
+
+model Label {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String
+
+  // optional styling
+  color     String?
+
+  taskLinks TaskLabel[]
+
+  createdAt DateTime @default(now())
+  createdById String?
+  updatedAt DateTime @updatedAt
+  updatedById String?
+
+  @@unique([slug])
+}
+
+model TaskLabel {
+  taskId  String @db.Uuid
+  labelId String @db.Uuid
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+  assignedById String?
+
+  @@id([taskId, labelId])
+  @@index([labelId])
+}
+
+model TaskAssignment {
+  id           String   @id @default(uuid()) @db.Uuid
+
+  taskId       String   @db.Uuid
+  assigneeId   String
+
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignee     User     @relation(fields: [assigneeId], references: [id], onDelete: Cascade)
+
+  assignedAt   DateTime @default(now())
+  assignedById String?
+
+  @@unique([taskId, assigneeId]) // prevent duplicate assignment
+  @@index([assigneeId])
+  @@index([taskId])
+  @@index([assigneeId, taskId])
+}
