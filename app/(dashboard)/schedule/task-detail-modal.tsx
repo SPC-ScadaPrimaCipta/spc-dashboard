@@ -39,6 +39,8 @@ import { toast } from "sonner";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -98,6 +100,16 @@ export function ActivityDetailsModal({
 				startAt: t.startAt || t.startDate,
 				endAt: t.endAt || t.endDate,
 				color: t.color || "#3b82f6",
+				assigneeIds:
+					t.assignments?.map((a: any) => a.assignee?.id) || [],
+				labelSlugs: t.labels?.map((l: any) => l.label?.slug) || [],
+				isFullDay:
+					(t.startAt || t.startDate) &&
+					(t.endAt || t.endDate) &&
+					new Date(t.startAt || t.startDate).getHours() === 0 &&
+					new Date(t.startAt || t.startDate).getMinutes() === 0 &&
+					new Date(t.endAt || t.endDate).getHours() === 0 &&
+					new Date(t.endAt || t.endDate).getMinutes() === 0,
 			});
 		}
 	}, [activity, fullTask]);
@@ -217,7 +229,12 @@ export function ActivityDetailsModal({
 
 	return (
 		<Dialog open={isVisible} onOpenChange={(open) => !open && onClose()}>
-			<DialogContent className="max-w-3xl h-[85vh] p-0 gap-0 overflow-hidden flex flex-col bg-background">
+			<DialogContent
+				className={cn(
+					"h-[85vh] p-0 gap-0 overflow-hidden flex flex-col bg-background transition-all duration-200 ease-in-out",
+					isEditing ? "sm:max-w-[1600px]" : "max-w-7xl",
+				)}
+			>
 				{/* Header */}
 				<div
 					className="px-6 py-4 border-b border-border shrink-0 relative transition-colors duration-200"
@@ -355,7 +372,7 @@ export function ActivityDetailsModal({
 							)}
 						</div>
 
-						<div className="flex items-center gap-2 mr-8">
+						<div className="flex items-center gap-2">
 							{isEditing ? (
 								<>
 									<Button
@@ -386,8 +403,7 @@ export function ActivityDetailsModal({
 										className="h-8"
 										onClick={() => setIsEditing(true)}
 									>
-										<Edit className="mr-2 h-3.5 w-3.5" />{" "}
-										Edit
+										<Edit className="h-3.5 w-3.5" />{" "}
 									</Button>
 									<Button
 										variant="ghost"
@@ -395,8 +411,7 @@ export function ActivityDetailsModal({
 										className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
 										onClick={handleDelete}
 									>
-										<Trash2 className="mr-2 h-3.5 w-3.5" />{" "}
-										Delete
+										<Trash2 className="h-3.5 w-3.5" />{" "}
 									</Button>
 								</>
 							)}
@@ -409,10 +424,59 @@ export function ActivityDetailsModal({
 					<div className="p-6 space-y-8">
 						{/* Schedule Section */}
 						<section className="space-y-3">
-							<h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-								<Clock className="h-4 w-4" /> Schedule
-							</h4>
-							<div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg border border-border">
+							<div className="flex items-center justify-between">
+								<h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+									<Clock className="h-4 w-4" /> Schedule
+								</h4>
+								{isEditing && (
+									<div className="flex items-center gap-2">
+										<Checkbox
+											id="full-day"
+											checked={
+												formData.isFullDay || false
+											}
+											onCheckedChange={(checked) => {
+												const isChecked =
+													checked === true;
+												const updates: any = {
+													isFullDay: isChecked,
+												};
+												if (isChecked) {
+													if (formData.startAt) {
+														const s = new Date(
+															formData.startAt,
+														);
+														s.setHours(0, 0, 0, 0);
+														updates.startAt =
+															s.toISOString();
+													}
+													if (formData.endAt) {
+														const e = new Date(
+															formData.endAt,
+														);
+														e.setHours(0, 0, 0, 0);
+														updates.endAt =
+															e.toISOString();
+													}
+												}
+												setFormData({
+													...formData,
+													...updates,
+												});
+											}}
+										/>
+										<Label htmlFor="full-day">
+											Full Day
+										</Label>
+									</div>
+								)}
+							</div>
+							<div
+								className={cn(
+									"grid gap-4 bg-muted/30 p-4 rounded-lg border border-border",
+									isEditing ? "grid-cols-1" : "grid-cols-2",
+								)}
+							>
 								<div>
 									<div className="text-xs text-muted-foreground mb-1">
 										Start
@@ -431,25 +495,31 @@ export function ActivityDetailsModal({
 														date?.toISOString(),
 												})
 											}
+											includeTime={!formData.isFullDay}
 											className="h-8 text-sm"
 										/>
 									) : (
 										<div className="font-medium">
-											{task.startDate
-												? format(
-														new Date(
-															task.startDate,
-														),
-														"PPP p",
-													)
-												: task.startAt
-													? format(
-															new Date(
-																task.startAt,
-															),
-															"PPP p",
-														)
-													: "Not set"}
+											{(() => {
+												const d =
+													task.startDate ||
+													task.startAt
+														? new Date(
+																task.startDate ||
+																	task.startAt,
+															)
+														: null;
+												if (!d) return "Not set";
+												const isMidnight =
+													d.getHours() === 0 &&
+													d.getMinutes() === 0;
+												return format(
+													d,
+													isMidnight
+														? "PPP"
+														: "PPP HH:mm",
+												);
+											})()}
 										</div>
 									)}
 								</div>
@@ -470,23 +540,30 @@ export function ActivityDetailsModal({
 													endAt: date?.toISOString(),
 												})
 											}
+											includeTime={!formData.isFullDay}
 											className="h-8 text-sm"
 										/>
 									) : (
 										<div className="font-medium">
-											{task.endDate
-												? format(
-														new Date(task.endDate),
-														"PPP p",
-													)
-												: task.endAt
-													? format(
-															new Date(
-																task.endAt,
-															),
-															"PPP p",
-														)
-													: "Not set"}
+											{(() => {
+												const d =
+													task.endDate || task.endAt
+														? new Date(
+																task.endDate ||
+																	task.endAt,
+															)
+														: null;
+												if (!d) return "Not set";
+												const isMidnight =
+													d.getHours() === 0 &&
+													d.getMinutes() === 0;
+												return format(
+													d,
+													isMidnight
+														? "PPP"
+														: "PPP HH:mm",
+												);
+											})()}
 										</div>
 									)}
 								</div>
@@ -509,17 +586,62 @@ export function ActivityDetailsModal({
 							<h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
 								<UserIcon className="h-4 w-4" /> People
 							</h4>
-							<UserSearchMultiSelect
-								selectedIds={
-									task.assignments?.map(
-										(a: any) => a.assignee?.id,
-									) || []
-								}
-								onChange={(ids) =>
-									handleAttributeUpdate({ assigneeIds: ids })
-								}
-								placeholder="Add people..."
-							/>
+							{isEditing ? (
+								<UserSearchMultiSelect
+									selectedIds={formData.assigneeIds || []}
+									onChange={(ids) =>
+										setFormData({
+											...formData,
+											assigneeIds: ids,
+										})
+									}
+									placeholder="Add people..."
+								/>
+							) : (
+								<div className="flex flex-wrap gap-2">
+									{task.assignments?.length > 0 ? (
+										task.assignments.map(
+											(assignment: any) => (
+												<div
+													key={
+														assignment.assignee?.id
+													}
+													className="flex items-center gap-2 bg-muted/50 rounded-full pr-3 pl-1 py-1 border border-border"
+												>
+													<Avatar className="h-6 w-6">
+														<AvatarImage
+															src={
+																assignment
+																	.assignee
+																	?.image
+															}
+														/>
+														<AvatarFallback className="text-[10px]">
+															{assignment.assignee?.name
+																?.substring(
+																	0,
+																	2,
+																)
+																.toUpperCase() ||
+																"??"}
+														</AvatarFallback>
+													</Avatar>
+													<span className="text-xs font-medium">
+														{
+															assignment.assignee
+																?.name
+														}
+													</span>
+												</div>
+											),
+										)
+									) : (
+										<span className="text-sm text-muted-foreground italic">
+											No one assigned
+										</span>
+									)}
+								</div>
+							)}
 						</section>
 
 						{/* Labels Section */}
@@ -527,21 +649,49 @@ export function ActivityDetailsModal({
 							<h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
 								<Tag className="h-4 w-4" /> Labels
 							</h4>
-							<LabelMultiSelect
-								selectedSlugs={
-									task.labels?.map(
-										(l: any) => l.label?.slug,
-									) || []
-								}
-								onChange={(slugs) =>
-									handleAttributeUpdate({ labelSlugs: slugs })
-								}
-								placeholder="Add labels..."
-								onLabelCreate={(newLabel) => {
-									// Label creation
-									// We can just rely on immediate update via onChange which label-multi-select triggers
-								}}
-							/>
+							{isEditing ? (
+								<LabelMultiSelect
+									selectedSlugs={formData.labelSlugs || []}
+									onChange={(slugs) =>
+										setFormData({
+											...formData,
+											labelSlugs: slugs,
+										})
+									}
+									placeholder="Add labels..."
+									onLabelCreate={(newLabel) => {
+										// We just add it to the form data
+										// The new label is created in DB by the LabelMultiSelect component itself typically or we handle it here?
+										// LabelMultiSelect creates it via API usually if implemented that way, or just returns new slug.
+										// Assuming LabelMultiSelect handles creation of new generic label entities if needed,
+										// or if it's just selection, we just update slugs.
+									}}
+								/>
+							) : (
+								<div className="flex flex-wrap gap-2">
+									{task.labels?.length > 0 ? (
+										task.labels.map((taskLabel: any) => (
+											<Badge
+												key={taskLabel.label?.slug}
+												variant="outline"
+												className="px-2 py-1 text-xs border-0"
+												style={{
+													backgroundColor:
+														taskLabel.label
+															?.color || "#muted",
+													color: "#fff",
+												}}
+											>
+												{taskLabel.label?.name}
+											</Badge>
+										))
+									) : (
+										<span className="text-sm text-muted-foreground italic">
+											No labels
+										</span>
+									)}
+								</div>
+							)}
 						</section>
 
 						{/* Description Section */}
@@ -612,7 +762,7 @@ export function ActivityDetailsModal({
 															new Date(
 																comment.createdAt,
 															),
-															"MMM d, p",
+															"MMM d, HH:mm",
 														)}
 													</span>
 												</div>
@@ -686,7 +836,7 @@ export function ActivityDetailsModal({
 												<span className="text-[10px] text-muted-foreground">
 													{format(
 														new Date(log.at),
-														"MMM d, p",
+														"MMM d, HH:mm",
 													)}
 												</span>
 											</div>

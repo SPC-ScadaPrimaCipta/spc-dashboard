@@ -29,11 +29,13 @@ interface LabelOption {
 	color: string;
 }
 
+const DEFAULT_LABELS: LabelOption[] = [];
+
 export function LabelMultiSelect({
 	selectedSlugs = [],
 	onChange,
 	placeholder,
-	existingLabels = [],
+	existingLabels = DEFAULT_LABELS,
 	onLabelCreate,
 }: LabelMultiSelectProps) {
 	const [open, setOpen] = useState(false);
