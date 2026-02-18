@@ -40,8 +40,8 @@ export default function LoginPage() {
 		}
 
 		// Success → redirect to dashboard
-		router.push("/dashboard");
-		console.log("doesn't redirect");
+		// router.push("/dashboard");
+		router.push("/api/auth/post-login");
 	};
 
 	// -----------------------
@@ -54,7 +54,8 @@ export default function LoginPage() {
 		// This WILL redirect the browser
 		await authClient.signIn.social({
 			provider: "microsoft",
-			callbackURL: "/dashboard",
+			// callbackURL: "/dashboard",
+			callbackURL: "/api/auth/post-login",
 		});
 	};
 

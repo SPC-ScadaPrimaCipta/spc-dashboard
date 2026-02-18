@@ -16,15 +16,19 @@ export default function ScheduleLayout({
 	}
 
 	return (
-		<div className="flex flex-col h-full p-6 space-y-6">
-			<div className="flex flex-col space-y-2">
-				<h1 className="text-2xl font-bold tracking-tight">Schedule</h1>
-				<p className="text-muted-foreground">
-					Manage and view tasks in different layouts.
-				</p>
+		<div className="flex flex-col h-full space-y-6">
+			<div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-0 justify-between">
+				<div className="flex flex-col">
+					<h1 className="text-2xl font-semibold tracking-tight">
+						Schedule
+					</h1>
+					<p className="text-muted-foreground">
+						Manage and view tasks in different layouts.
+					</p>
+				</div>
+				<ScheduleTabs />
 			</div>
 			<div className="flex flex-col h-full">
-				<ScheduleTabs />
 				<div className="flex-1 h-full min-h-0 overflow-hidden">
 					{children}
 				</div>

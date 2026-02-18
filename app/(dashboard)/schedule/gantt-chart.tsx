@@ -8,7 +8,13 @@ import {
 	subMonths,
 	isSameDay,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, Plus, Download } from "lucide-react";
+import {
+	ChevronLeft,
+	ChevronRight,
+	Plus,
+	Download,
+	Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -423,12 +429,16 @@ export function GanttChart() {
 			</div>
 
 			{loading ? (
-				<div className="h-64 flex items-center justify-center text-muted-foreground animate-pulse bg-background">
-					Loading schedule...
+				<div className="h-64 flex items-center justify-center text-muted-foreground bg-background">
+					<Loader2 className="h-8 w-8 animate-spin text-primary" />
 				</div>
 			) : employees.length === 0 ? (
-				<div className="h-64 flex items-center justify-center text-muted-foreground bg-background">
-					No tasks found for this period.
+				<div className="h-64 flex flex-col items-center justify-center gap-4 text-muted-foreground bg-background">
+					<p>No tasks found for this period.</p>
+					<Button onClick={() => setIsCreateModalOpen(true)}>
+						<Plus className="h-4 w-4 mr-2" />
+						Create Task
+					</Button>
 				</div>
 			) : (
 				<TooltipProvider>
