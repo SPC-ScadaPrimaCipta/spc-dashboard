@@ -33,11 +33,11 @@ export function ScheduleTabs() {
 		<Tabs
 			value={currentTab}
 			onValueChange={handleTabChange}
-			className="w-full mb-4"
+			className="w-auto"
 		>
 			<TabsList>
-				<TabsTrigger value="gantt">Gantt</TabsTrigger>
 				<TabsTrigger value="calendar">Calendar</TabsTrigger>
+				<TabsTrigger value="gantt">Gantt</TabsTrigger>
 				<TabsTrigger value="task">Task</TabsTrigger>
 			</TabsList>
 		</Tabs>

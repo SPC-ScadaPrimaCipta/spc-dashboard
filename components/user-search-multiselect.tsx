@@ -18,6 +18,7 @@ interface UserSearchMultiSelectProps {
 	selectedIds: string[];
 	onChange: (ids: string[]) => void;
 	placeholder?: string;
+	single?: boolean;
 }
 
 interface Option {
@@ -30,6 +31,7 @@ export function UserSearchMultiSelect({
 	selectedIds = [],
 	onChange,
 	placeholder,
+	single = false,
 }: UserSearchMultiSelectProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
@@ -77,6 +79,17 @@ export function UserSearchMultiSelect({
 
 	const handleSelect = (optionValue: string) => {
 		const isSelected = selectedValues.includes(optionValue);
+
+		if (single) {
+			if (isSelected) {
+				onChange([]);
+			} else {
+				onChange([optionValue]);
+				setOpen(false); // Close dropdown on select when single
+			}
+			return;
+		}
+
 		if (isSelected) {
 			onChange(selectedIds.filter((id) => id !== optionValue));
 		} else {

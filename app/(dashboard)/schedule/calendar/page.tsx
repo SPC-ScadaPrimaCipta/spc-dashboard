@@ -1,7 +1,15 @@
+"use client";
+
+import dynamic from "next/dynamic";
+
+const Scheduler = dynamic(() => import("@/components/scheduler"), {
+	ssr: false,
+});
+
 export default function CalendarPage() {
 	return (
-		<div className="flex items-center justify-center h-full border rounded-lg bg-gray-50 text-muted-foreground">
-			Calendar View Coming Soon
+		<div className="h-full rounded-lg text-muted-foreground overflow-auto">
+			<Scheduler />
 		</div>
 	);
 }

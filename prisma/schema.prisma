@@ -24,6 +24,12 @@ model User {
   sessions      Session[]
   roles         Role[]    @relation("RoleToUser")
   taskAssignments TaskAssignment[]
+  createdTasks  Task[]    @relation("TaskCreatedBy")
+  updatedTasks  Task[]    @relation("TaskUpdatedBy")
+  createdTaskComments  TaskComment[] @relation("TaskCommentCreatedBy")
+  updatedTaskComments  TaskComment[] @relation("TaskCommentUpdatedBy")
+  taskAuditLogs TaskAuditTrail[] @relation("TaskAuditTrailBy")
+  scheduleResources ScheduleResource[]
 
   @@map("user")
 }
@@ -349,11 +355,15 @@ model Task {
   color       String?       @db.VarChar(20)
   labels      TaskLabel[]
 
+  resources TaskResource[]
+
   // Auditable columns
   createdAt   DateTime      @default(now())
   createdById String?
+  createdBy   User?         @relation("TaskCreatedBy", fields: [createdById], references: [id])
   updatedAt   DateTime      @updatedAt
   updatedById String?
+  updatedBy   User?         @relation("TaskUpdatedBy", fields: [updatedById], references: [id])
 
   @@index([statusId])
   @@index([parentTaskId])
@@ -370,9 +380,11 @@ model TaskComment {
 
   createdAt DateTime @default(now())
   createdById String
+  createdBy   User   @relation("TaskCommentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
   updatedAt DateTime @updatedAt
   updatedById String?
+  updatedBy   User?   @relation("TaskCommentUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
 
   @@index([taskId, createdAt])
 }
@@ -394,6 +406,7 @@ model TaskAuditTrail {
   // Who/when
   at        DateTime        @default(now())
   byUserId  String?
+  by        User?           @relation("TaskAuditTrailBy", fields: [byUserId], references: [id], onDelete: SetNull)
 
   @@index([taskId, at])
   @@index([action, at])
@@ -447,4 +460,64 @@ model TaskAssignment {
   @@index([assigneeId])
   @@index([taskId])
   @@index([assigneeId, taskId])
+}
+
+model ResourceType {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code        String   @unique @db.VarChar(50) // PERSON, VEHICLE, ROOM, etc (stable)
+  name        String   @db.VarChar(100)        // display name
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  resources   ScheduleResource[]
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([isActive, sortOrder])
+}
+
+model ScheduleResource {
+  id             String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  resourceTypeId String       @db.Uuid
+  resourceType   ResourceType @relation(fields: [resourceTypeId], references: [id])
+
+  name           String       @db.VarChar(150)
+  code           String?      @db.VarChar(50)   // e.g. room code, plate number
+  color          String?      @db.VarChar(20)   // optional default row color in scheduler
+
+  // Optional link to User when the resource represents a person
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  meta           Json?        // flexible: capacity, building, specs, etc.
+  isActive       Boolean      @default(true)
+
+  createdAt      DateTime     @default(now())
+  createdById    String?
+  updatedAt      DateTime     @updatedAt
+  updatedById    String?
+
+  taskLinks      TaskResource[]
+
+  @@index([resourceTypeId, isActive])
+  @@index([userId])
+}
+
+model TaskResource {
+  taskId     String @db.Uuid
+  resourceId String @db.Uuid
+
+  task       Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  resource   ScheduleResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  assignedAt  DateTime @default(now())
+  assignedById String?
+
+  @@id([taskId, resourceId])
+  @@index([resourceId])
 }

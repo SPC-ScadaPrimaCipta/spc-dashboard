@@ -41,6 +41,7 @@ export const TaskCreateSchema = z
 		color: z.string().optional(),
 		assigneeIds: z.array(z.string()).optional(),
 		labelSlugs: z.array(z.string()).optional(),
+		resourceId: z.string().optional(),
 	})
 	.refine(
 		(data) => {
@@ -72,6 +73,7 @@ export const TaskUpdateSchema = z
 		color: z.string().optional().nullable(),
 		assigneeIds: z.array(z.string()).optional(),
 		labelSlugs: z.array(z.string()).optional(),
+		resourceId: z.string().optional(),
 	})
 	.refine(
 		(data) => {
