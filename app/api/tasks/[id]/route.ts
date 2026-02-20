@@ -186,6 +186,7 @@ export async function PATCH(
 		// Remove relation fields from scalar updates
 		delete updates.assigneeIds;
 		delete updates.labelSlugs;
+		delete updates.resourceId;
 
 		// Recalculate duration/endAt if time fields change
 		const mergedStart =
@@ -293,6 +294,19 @@ export async function PATCH(
 							labelId: lid,
 							assignedById: userId,
 						})),
+					});
+				}
+
+				// 3b. Update Resource
+				if (body.resourceId) {
+					await tx.taskResource.deleteMany({
+						where: { taskId: id },
+					});
+					await tx.taskResource.create({
+						data: {
+							taskId: id,
+							resourceId: body.resourceId,
+						},
 					});
 				}
 				// Log label changes as part of general update or separate?

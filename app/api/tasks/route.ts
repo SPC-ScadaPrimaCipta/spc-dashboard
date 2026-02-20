@@ -234,6 +234,15 @@ export async function POST(req: Request) {
 					});
 				}
 
+				if (body.resourceId) {
+					await tx.taskResource.create({
+						data: {
+							taskId: task.id,
+							resourceId: body.resourceId,
+						},
+					});
+				}
+
 				// 3. Audit
 				// Prepare "data" snapshot
 				// We can't fetch the full task with includes inside the create call easily without a secondary read,
