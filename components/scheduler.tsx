@@ -117,7 +117,7 @@ const Scheduler: React.FC = () => {
 			);
 			const resourceId = args.newResource;
 
-			const res = await fetch(`/api/tasks/${args.e.id()}`, {
+			const res = await fetch(`/api/tasks/${args.e.data.taskId}`, {
 				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",
@@ -167,7 +167,7 @@ const Scheduler: React.FC = () => {
 				);
 			}
 
-			const res = await fetch(`/api/tasks/${args.e.id()}`, {
+			const res = await fetch(`/api/tasks/${args.e.data.taskId}`, {
 				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",
@@ -241,7 +241,7 @@ const Scheduler: React.FC = () => {
 
 	const onEventClicked = async (args: DayPilot.SchedulerEventClickedArgs) => {
 		setSelectedActivity({
-			id: args.e.id(),
+			id: args.e.data.taskId,
 			title: args.e.text(),
 			// Add more properties if needed by the modal to fetch details or display initial info
 		});
@@ -360,6 +360,28 @@ const Scheduler: React.FC = () => {
 		return { days, scale, timeHeaders, cellWidth };
 	};
 
+	const handleExport = (format: "json" | "xlsx") => {
+		let days = 0;
+		switch (view) {
+			case "Day":
+				days = 1;
+				break;
+			case "Week":
+				days = 7;
+				break;
+			case "Month":
+				days = startDate.daysInMonth();
+				break;
+			case "Year":
+				days = startDate.daysInYear();
+				break;
+		}
+		const start = startDate.toString("yyyy-MM-dd");
+		const end = startDate.addDays(days).toString("yyyy-MM-dd");
+		const url = `/api/schedule/events/export?start=${start}&end=${end}&type=${resourceType}&filetype=${format}`;
+		window.open(url, "_blank");
+	};
+
 	const schedulerProps = getSchedulerProps();
 
 	return (
@@ -371,9 +393,10 @@ const Scheduler: React.FC = () => {
 				startDate={startDate}
 				resourceType={resourceType}
 				setResourceType={setResourceType}
+				onExport={handleExport}
 			/>
 
-			<div className="flex-1 border overflow-hidden relative min-h-[400px]">
+			<div className="flex-1 border overflow-hidden relative min-h-[400px] dp-wrapper">
 				{isLoading && (
 					<div className="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
 						<Loader2 className="h-10 w-10 animate-spin text-primary" />

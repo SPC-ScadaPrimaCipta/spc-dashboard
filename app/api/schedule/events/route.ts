@@ -63,7 +63,7 @@ export async function GET(req: Request) {
 			}
 
 			return {
-				id: tr.taskId,
+				id: `${tr.taskId}_${tr.resourceId}`,
 				taskId: tr.taskId,
 				resourceId: tr.resourceId,
 				text: tr.task.title,

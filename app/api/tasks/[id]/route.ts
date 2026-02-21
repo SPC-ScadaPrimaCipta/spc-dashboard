@@ -38,6 +38,15 @@ export async function GET(
 						label: true,
 					},
 				},
+				resources: {
+					include: {
+						resource: {
+							include: {
+								resourceType: true,
+							},
+						},
+					},
+				},
 			},
 		});
 
@@ -276,6 +285,63 @@ export async function PATCH(
 							message: "Assignees added",
 						},
 					});
+
+					// Keep TaskResource in sync with assignees (auto-create ScheduleResource if missing)
+					const peopleType = await tx.resourceType.findUnique({
+						where: { code: "PEOPLE" },
+					});
+
+					if (peopleType) {
+						for (const uid of assigneesToAdd) {
+							let resource = await tx.scheduleResource.findFirst({
+								where: {
+									userId: uid,
+									resourceTypeId: peopleType.id,
+								},
+							});
+
+							if (!resource) {
+								const user = await tx.user.findUnique({
+									where: { id: uid },
+								});
+								if (user) {
+									resource = await tx.scheduleResource.create(
+										{
+											data: {
+												name: user.name,
+												resourceTypeId: peopleType.id,
+												userId: uid,
+												isActive: true,
+												createdById: userId,
+												updatedById: userId,
+											},
+										},
+									);
+								}
+							}
+
+							if (resource) {
+								const existingLink =
+									await tx.taskResource.findUnique({
+										where: {
+											taskId_resourceId: {
+												taskId: id,
+												resourceId: resource.id,
+											},
+										},
+									});
+								if (!existingLink) {
+									await tx.taskResource.create({
+										data: {
+											taskId: id,
+											resourceId: resource.id,
+											assignedById: userId,
+										},
+									});
+								}
+							}
+						}
+					}
 				}
 
 				// 3. Update Labels
