@@ -111,6 +111,7 @@ export function TaskQuickCreateModal({
 				type: "TASK",
 				priority: "MEDIUM",
 				allDay: true,
+				color: "#3b82f6",
 			};
 
 			const response = await fetch("/api/tasks", {

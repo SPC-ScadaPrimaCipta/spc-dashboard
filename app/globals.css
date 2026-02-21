@@ -126,3 +126,8 @@ body {
 	height: 100%;
 	overflow: hidden; /* stops body scroll */
 }
+
+/* DayPilot Dark Mode Hacks */
+.dark .dp-wrapper {
+	filter: invert(0.93) hue-rotate(180deg);
+}

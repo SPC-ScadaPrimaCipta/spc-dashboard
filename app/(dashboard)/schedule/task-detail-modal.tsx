@@ -32,6 +32,7 @@ import {
 	ExternalLink,
 	Edit,
 	Trash2,
+	Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -440,7 +441,15 @@ export function ActivityDetailsModal({
 				</div>
 
 				{/* Scrollable Body */}
-				<div className="flex-1 overflow-y-auto min-h-0">
+				<div className="flex-1 overflow-y-auto min-h-0 relative">
+					{loading && (
+						<div className="absolute inset-0 bg-background/50 flex flex-col items-center justify-center z-50 backdrop-blur-[2px]">
+							<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+							<p className="text-sm text-muted-foreground font-medium">
+								Loading details...
+							</p>
+						</div>
+					)}
 					<div className="p-6 space-y-8">
 						{/* Schedule Section */}
 						<section className="space-y-3">
@@ -662,6 +671,40 @@ export function ActivityDetailsModal({
 									)}
 								</div>
 							)}
+						</section>
+
+						{/* Resources Section */}
+						<section className="space-y-3">
+							<h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+								<Layers className="h-4 w-4" /> Resources
+							</h4>
+							<div className="flex flex-wrap gap-2">
+								{task.resources?.filter(
+									(tr: any) =>
+										tr.resource?.resourceType?.code !==
+										"PEOPLE",
+								).length > 0 ? (
+									task.resources
+										.filter(
+											(tr: any) =>
+												tr.resource?.resourceType
+													?.code !== "PEOPLE",
+										)
+										.map((tr: any) => (
+											<Badge
+												key={tr.resourceId}
+												variant="outline"
+												className="px-2 py-1 text-xs"
+											>
+												{tr.resource?.name}
+											</Badge>
+										))
+								) : (
+									<span className="text-sm text-muted-foreground italic">
+										No resources connected
+									</span>
+								)}
+							</div>
 						</section>
 
 						{/* Labels Section */}

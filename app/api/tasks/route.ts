@@ -234,6 +234,8 @@ export async function POST(req: Request) {
 					});
 				}
 
+				let currentAssigneeIds = body.assigneeIds || [];
+
 				if (body.resourceId) {
 					await tx.taskResource.create({
 						data: {
@@ -241,6 +243,28 @@ export async function POST(req: Request) {
 							resourceId: body.resourceId,
 						},
 					});
+
+					const resource = await tx.scheduleResource.findUnique({
+						where: { id: body.resourceId },
+						select: { userId: true },
+					});
+
+					if (
+						resource?.userId &&
+						!currentAssigneeIds.includes(resource.userId)
+					) {
+						await tx.taskAssignment.create({
+							data: {
+								taskId: task.id,
+								assigneeId: resource.userId,
+								assignedById: userId,
+							},
+						});
+						currentAssigneeIds = [
+							...currentAssigneeIds,
+							resource.userId,
+						];
+					}
 				}
 
 				// 3. Audit
@@ -250,7 +274,7 @@ export async function POST(req: Request) {
 				// Let's store the input body as the snapshot or the created task fields.
 				const snapshot = {
 					...task,
-					assigneeIds: body.assigneeIds,
+					assigneeIds: currentAssigneeIds,
 					labelSlugs: body.labelSlugs,
 				};
 
