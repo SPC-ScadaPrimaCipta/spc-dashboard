@@ -35,11 +35,46 @@ export async function PUT(
 			return NextResponse.json({ success: true });
 		}
 
-		// Handle Details Update (Name, etc.)
-		if (body.name) {
+		// Handle Details Update (Name, Division, Position, Initials)
+		if (
+			body.name !== undefined ||
+			body.divisionId !== undefined ||
+			body.position !== undefined ||
+			body.initials !== undefined
+		) {
+			const updateData: any = {};
+			if (body.name !== undefined) updateData.name = body.name;
+
+			if (
+				body.divisionId !== undefined ||
+				body.position !== undefined ||
+				body.initials !== undefined
+			) {
+				updateData.profile = {
+					upsert: {
+						create: {
+							divisionId: body.divisionId || null,
+							position: body.position || null,
+							initials: body.initials || null,
+						},
+						update: {
+							...(body.divisionId !== undefined && {
+								divisionId: body.divisionId || null,
+							}),
+							...(body.position !== undefined && {
+								position: body.position || null,
+							}),
+							...(body.initials !== undefined && {
+								initials: body.initials || null,
+							}),
+						},
+					},
+				};
+			}
+
 			const updated = await prisma.user.update({
 				where: { id },
-				data: { name: body.name },
+				data: updateData,
 			});
 			return NextResponse.json(updated);
 		}

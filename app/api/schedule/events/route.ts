@@ -73,6 +73,9 @@ export async function GET(req: Request) {
 				backColor: tr.task.color || tr.resource.color || "#3d85c6",
 				fontColor: "#fff",
 				bubbleHtml: `<strong>${tr.task.title}</strong>`,
+				tags: {
+					allDay: tr.task.allDay,
+				},
 			};
 		});
 

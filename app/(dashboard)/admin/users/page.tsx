@@ -54,20 +54,25 @@ interface User {
 	createdAt: string;
 	banned: boolean;
 	roles: Role[];
+	profile?: {
+		divisionId?: string | null;
+		position?: string | null;
+		initials?: string | null;
+	} | null;
 }
 
 export default function UsersPage() {
 	// Authorization - read:users
 	const { isAuthorized, isLoading: authLoading } = useRequirePermission(
 		"read",
-		"users"
+		"users",
 	);
 
 	// Authorization - manage:users (for actions)
 	const { isAuthorized: canManage } = useRequirePermission(
 		"manage",
 		"users",
-		{ redirect: false }
+		{ redirect: false },
 	);
 
 	const [users, setUsers] = useState<User[]>([]);
@@ -128,7 +133,7 @@ export default function UsersPage() {
 			!confirm(
 				`Are you sure you want to ${
 					isBanned ? "unban" : "ban"
-				} this user?`
+				} this user?`,
 			)
 		)
 			return;
@@ -166,7 +171,7 @@ export default function UsersPage() {
 	const handleDeleteUser = async (userId: string) => {
 		if (
 			!confirm(
-				"Are you sure you want to PERMANENTLY delete this user? This action cannot be undone."
+				"Are you sure you want to PERMANENTLY delete this user? This action cannot be undone.",
 			)
 		)
 			return;
@@ -300,7 +305,7 @@ export default function UsersPage() {
 								<TableCell className="text-muted-foreground text-xs">
 									{format(
 										new Date(user.createdAt),
-										"MMM d, yyyy"
+										"MMM d, yyyy",
 									)}
 								</TableCell>
 								{canManage && (
@@ -331,7 +336,7 @@ export default function UsersPage() {
 													<UserRoleManager
 														userId={user.id}
 														currentRoles={user.roles.map(
-															(r) => r.name
+															(r) => r.name,
 														)}
 														onUpdate={fetchUsers}
 													/>
@@ -340,7 +345,7 @@ export default function UsersPage() {
 												<DropdownMenuItem
 													onClick={() =>
 														handleRevokeSessions(
-															user.id
+															user.id,
 														)
 													}
 												>
@@ -351,7 +356,7 @@ export default function UsersPage() {
 													onClick={() =>
 														handleBanUser(
 															user.id,
-															user.banned
+															user.banned,
 														)
 													}
 													className={
@@ -369,7 +374,7 @@ export default function UsersPage() {
 												<DropdownMenuItem
 													onClick={() =>
 														handleDeleteUser(
-															user.id
+															user.id,
 														)
 													}
 													className="text-destructive focus:text-destructive"

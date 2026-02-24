@@ -115,24 +115,27 @@ export function ActivityDetailsModal({
 				assigneeIds:
 					t.assignments?.map((a: any) => a.assignee?.id) || [],
 				labelSlugs: t.labels?.map((l: any) => l.label?.slug) || [],
-				isFullDay:
-					(t.startAt || t.startDate) &&
-					(t.endAt || t.endDate) &&
-					new Date(t.startAt || t.startDate).getHours() === 0 &&
-					new Date(t.startAt || t.startDate).getMinutes() === 0 &&
-					new Date(t.endAt || t.endDate).getHours() === 0 &&
-					new Date(t.endAt || t.endDate).getMinutes() === 0,
+				isFullDay: t.allDay,
 			});
 		}
 	}, [activity, fullTask]);
 
 	const handleSave = async () => {
 		setIsSaving(true);
+
+		const patchData = {
+			...formData,
+			allDay: formData.isFullDay,
+		};
+		// Prevent passing `isFullDay` since backend probably expects `allDay`
+		// if they strictly parse schema using zod `TaskUpdateSchema`.
+		delete patchData.isFullDay;
+
 		try {
 			const res = await fetch(`/api/tasks/${(fullTask || activity).id}`, {
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(formData),
+				body: JSON.stringify(patchData),
 			});
 			if (res.ok) {
 				toast.success("Task updated");
@@ -473,19 +476,28 @@ export function ActivityDetailsModal({
 												if (isChecked) {
 													if (formData.startAt) {
 														const s = new Date(
-															formData.startAt,
+															String(
+																formData.startAt,
+															).replace("Z", ""),
 														);
 														s.setHours(0, 0, 0, 0);
 														updates.startAt =
-															s.toISOString();
+															format(
+																s,
+																"yyyy-MM-dd'T'HH:mm:ss.000'Z'",
+															);
 													}
 													if (formData.endAt) {
 														const e = new Date(
-															formData.endAt,
+															String(
+																formData.endAt,
+															).replace("Z", ""),
 														);
 														e.setHours(0, 0, 0, 0);
-														updates.endAt =
-															e.toISOString();
+														updates.endAt = format(
+															e,
+															"yyyy-MM-dd'T'HH:mm:ss.000'Z'",
+														);
 													}
 												}
 												setFormData({
@@ -514,14 +526,22 @@ export function ActivityDetailsModal({
 										<DateTimePicker
 											date={
 												formData.startAt
-													? new Date(formData.startAt)
+													? new Date(
+															String(
+																formData.startAt,
+															).replace("Z", ""),
+														)
 													: undefined
 											}
 											setDate={(date) =>
 												setFormData({
 													...formData,
-													startAt:
-														date?.toISOString(),
+													startAt: date
+														? format(
+																date,
+																"yyyy-MM-dd'T'HH:mm:ss.000'Z'",
+															)
+														: undefined,
 												})
 											}
 											includeTime={!formData.isFullDay}
@@ -530,21 +550,20 @@ export function ActivityDetailsModal({
 									) : (
 										<div className="font-medium">
 											{(() => {
-												const d =
+												const dVal =
 													task.startDate ||
-													task.startAt
-														? new Date(
-																task.startDate ||
-																	task.startAt,
-															)
-														: null;
+													task.startAt;
+												const d = dVal
+													? new Date(
+															String(
+																dVal,
+															).replace("Z", ""),
+														)
+													: null;
 												if (!d) return "Not set";
-												const isMidnight =
-													d.getHours() === 0 &&
-													d.getMinutes() === 0;
 												return format(
 													d,
-													isMidnight
+													task.allDay
 														? "PPP"
 														: "PPP HH:mm",
 												);
@@ -560,13 +579,22 @@ export function ActivityDetailsModal({
 										<DateTimePicker
 											date={
 												formData.endAt
-													? new Date(formData.endAt)
+													? new Date(
+															String(
+																formData.endAt,
+															).replace("Z", ""),
+														)
 													: undefined
 											}
 											setDate={(date) =>
 												setFormData({
 													...formData,
-													endAt: date?.toISOString(),
+													endAt: date
+														? format(
+																date,
+																"yyyy-MM-dd'T'HH:mm:ss.000'Z'",
+															)
+														: undefined,
 												})
 											}
 											includeTime={!formData.isFullDay}
@@ -575,20 +603,19 @@ export function ActivityDetailsModal({
 									) : (
 										<div className="font-medium">
 											{(() => {
-												const d =
-													task.endDate || task.endAt
-														? new Date(
-																task.endDate ||
-																	task.endAt,
-															)
-														: null;
+												const dVal =
+													task.endDate || task.endAt;
+												const d = dVal
+													? new Date(
+															String(
+																dVal,
+															).replace("Z", ""),
+														)
+													: null;
 												if (!d) return "Not set";
-												const isMidnight =
-													d.getHours() === 0 &&
-													d.getMinutes() === 0;
 												return format(
 													d,
-													isMidnight
+													task.allDay
 														? "PPP"
 														: "PPP HH:mm",
 												);

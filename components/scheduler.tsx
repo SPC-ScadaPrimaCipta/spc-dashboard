@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { ActivityDetailsModal } from "@/app/(dashboard)/schedule/task-detail-modal";
 import { TaskQuickCreateModal } from "@/app/(dashboard)/schedule/task-quickcreate-modal";
 import { DayPilot, DayPilotScheduler } from "@daypilot/daypilot-lite-react";
@@ -19,9 +19,80 @@ import {
 } from "@/lib/daypilot-utils";
 import { ScheduleNavigation } from "@/components/schedule-navigation";
 
+const renderPeopleRowHeader = (row: any, useInitials: boolean) => {
+	let displayName = row.name;
+	if (useInitials) {
+		const profileInitials = row.data.tags?.initials;
+		if (profileInitials) {
+			displayName = profileInitials;
+		} else {
+			displayName = row.name
+				.split(" ")
+				.filter(Boolean)
+				.map((n: string) => n.charAt(0))
+				.join("")
+				.toUpperCase()
+				.substring(0, 3);
+		}
+	}
+
+	let tagsHtml = "";
+	const tagData = row.data.tags;
+	if (tagData) {
+		let displayText = "";
+		let bgColor = "#f3f4f6";
+		let fontColor = "#4b5563";
+		let borderColor = "#e5e7eb";
+
+		if (tagData.divisionCode || tagData.division) {
+			displayText = tagData.divisionCode || tagData.division;
+			if (tagData.divisionColor) {
+				bgColor = tagData.divisionColor;
+				fontColor = "#ffffff";
+				borderColor = tagData.divisionColor;
+			}
+		} else if (tagData.position) {
+			displayText = tagData.position;
+		}
+
+		if (displayText) {
+			const maxLen = useInitials ? 5 : 8;
+			const truncated =
+				displayText.length > maxLen
+					? displayText.substring(0, maxLen) + "..."
+					: displayText;
+
+			tagsHtml =
+				'<div style="margin-top: 4px; width: 100%; display: flex; justify-content: ' +
+				(useInitials ? "center" : "flex-start") +
+				';"><span style="background-color: ' +
+				bgColor +
+				"; color: " +
+				fontColor +
+				"; font-size: " +
+				(useInitials ? "9px" : "10px") +
+				"; padding: 2px 4px; border-radius: 4px; border: 1px solid " +
+				borderColor +
+				'; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;" title="' +
+				displayText +
+				'">' +
+				truncated +
+				"</span></div>";
+		}
+	}
+
+	return `
+		<div style="display: flex; flex-direction: column; padding: 4px ${useInitials ? "2px" : "8px"}; justify-content: center; height: 100%; align-items: ${useInitials ? "center" : "flex-start"}; overflow: hidden; box-sizing: border-box;">
+			<div style="font-weight: 500; font-size: ${useInitials ? "15px" : "13px"}; line-height: 1.2; word-break: break-word; text-align: ${useInitials ? "center" : "left"}; width: 100%;">${displayName}</div>
+			${tagsHtml}
+		</div>
+	`;
+};
+
 const Scheduler: React.FC = () => {
 	const [scheduler, setScheduler] = useState<DayPilot.Scheduler>();
-
+	const wrapperRef = useRef<HTMLDivElement>(null);
+	const [schedulerHeight, setSchedulerHeight] = useState<number>(400);
 	const [resources, setResources] = useState<DayPilot.ResourceData[]>([]);
 	const [events, setEvents] = useState<DayPilot.EventData[]>([]);
 
@@ -33,8 +104,10 @@ const Scheduler: React.FC = () => {
 		new DayPilot.Date().firstDayOfMonth(),
 	);
 	const [refreshKey, setRefreshKey] = useState(0);
-	const [resourceType, setResourceType] = useState<string>("ROOM");
+	const [resourceType, setResourceType] = useState<string>("PEOPLE");
 	const [isLoading, setIsLoading] = useState<boolean>(true);
+	const [useInitials, setUseInitials] = useState<boolean>(false);
+	const [selectedDivisions, setSelectedDivisions] = useState<string[]>([]);
 
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [selectedActivity, setSelectedActivity] = useState<any>(null);
@@ -46,6 +119,63 @@ const Scheduler: React.FC = () => {
 		resourceId?: string;
 		resourceName?: string;
 	} | null>(null);
+
+	const [hoveredEvent, setHoveredEvent] = useState<{
+		title: string;
+		start: string;
+		end: string;
+	} | null>(null);
+	const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
+	const handleMouseMove = (e: React.MouseEvent) => {
+		const target = e.target as HTMLElement;
+		const eventEl = target.closest(
+			'[class*="dp-custom-event-"]',
+		) as HTMLElement;
+		if (eventEl) {
+			const eventClass = Array.from(eventEl.classList).find((c) =>
+				c.startsWith("dp-custom-event-"),
+			);
+			if (eventClass) {
+				const eventId = eventClass.replace("dp-custom-event-", "");
+				const ev = events.find((e) => String(e.id) === String(eventId));
+				if (ev) {
+					const startDP = new DayPilot.Date(ev.start as string);
+					const endDP = new DayPilot.Date(ev.end as string);
+					const isAllDay = ev.tags?.allDay;
+					const formatStr = isAllDay
+						? "MMMM d, yyyy"
+						: "MMMM d, yyyy h:mm tt";
+
+					let displayEnd = endDP;
+					if (
+						isAllDay &&
+						startDP.toString("yyyy-MM-dd") !==
+							endDP.toString("yyyy-MM-dd")
+					) {
+						// For allDay events backend adds 1 day to end, so subtract it back for display
+						displayEnd = endDP.addDays(-1);
+					}
+
+					setHoveredEvent({
+						title: ev.text,
+						start: startDP.toString(formatStr),
+						end:
+							isAllDay &&
+							startDP.toString("yyyy-MM-dd") ===
+								displayEnd.toString("yyyy-MM-dd")
+								? ""
+								: displayEnd.toString(formatStr),
+					});
+					setTooltipPos({ x: e.clientX, y: e.clientY });
+					return;
+				}
+			}
+		}
+		if (hoveredEvent) {
+			setHoveredEvent(null);
+		}
+	};
 
 	const handleViewChange = (newView: "Day" | "Week" | "Month" | "Year") => {
 		setView(newView);
@@ -199,11 +329,44 @@ const Scheduler: React.FC = () => {
 			args.data.backColor = "#93c47d";
 		}
 
-		// if (view === "Month") {
-		// 	args.data.text = (args.data.text || "").slice(0, 8) + "…";
-		// }
+		// Inject a custom class that holds the event ID for hover tracking
+		args.data.cssClass = `dp-custom-event-${args.data.id}`;
 
-		// (args.data as any).toolTip = args.data.text;
+		const startDP = new DayPilot.Date(args.data.start as string);
+		const endDP = new DayPilot.Date(args.data.end as string);
+		const isAllDay = args.data.tags?.allDay;
+		const formatStr = isAllDay ? "MMM d, yyyy" : "MMM d, yyyy h:mm tt";
+
+		let displayEnd = endDP;
+		if (
+			isAllDay &&
+			startDP.toString("yyyy-MM-dd") !== endDP.toString("yyyy-MM-dd")
+		) {
+			// For allDay events backend adds 1 day to end, so subtract it back for display
+			displayEnd = endDP.addDays(-1);
+		}
+
+		const startDateStr = startDP.toString(formatStr);
+		const endDateStr =
+			isAllDay &&
+			startDP.toString("yyyy-MM-dd") === displayEnd.toString("yyyy-MM-dd")
+				? ""
+				: displayEnd.toString(formatStr);
+
+		const timeStr = endDateStr
+			? `${startDateStr} - ${endDateStr}`
+			: startDateStr;
+
+		// Render the title and date directly into the HTML of the event box
+		args.data.html = `
+			<div class="px-2 py-1 h-full flex flex-col justify-center overflow-hidden">
+				<div class="font-semibold text-sm truncate leading-tight">${args.data.text}</div>
+				<div class="text-[10px] opacity-90 truncate leading-tight mt-0.5">${timeStr}</div>
+			</div>
+		`;
+
+		args.data.toolTip = `${args.data.text} - ${timeStr}`;
+
 		args.data.areas = [
 			// {
 			// 	top: 14,
@@ -218,6 +381,14 @@ const Scheduler: React.FC = () => {
 			// 	},
 			// },
 		];
+	};
+
+	const onBeforeRowHeaderRender = (
+		args: DayPilot.SchedulerBeforeRowHeaderRenderArgs,
+	) => {
+		if (resourceType === "PEOPLE") {
+			args.row.html = renderPeopleRowHeader(args.row, useInitials);
+		}
 	};
 
 	const onTimeRangeSelected = async (
@@ -253,8 +424,15 @@ const Scheduler: React.FC = () => {
 			setIsLoading(true);
 			try {
 				// 1. Fetch resources
+				const resourceParams = new URLSearchParams({
+					type: resourceType,
+				});
+				selectedDivisions.forEach((div) =>
+					resourceParams.append("division", div),
+				);
+
 				const resResources = await fetch(
-					`/api/schedule/resources?type=${resourceType}`,
+					`/api/schedule/resources?${resourceParams.toString()}`,
 				);
 				let newResources: any[] = [];
 				if (resResources.ok) {
@@ -263,6 +441,13 @@ const Scheduler: React.FC = () => {
 						newResources = jsonRes.data.map((r: any) => ({
 							name: r.name,
 							id: r.id,
+							tags: {
+								division: r.user?.profile?.division?.name,
+								divisionCode: r.user?.profile?.division?.code,
+								divisionColor: r.user?.profile?.division?.color,
+								position: r.user?.profile?.position,
+								initials: r.user?.profile?.initials,
+							},
 						}));
 						setResources(newResources);
 					}
@@ -287,8 +472,17 @@ const Scheduler: React.FC = () => {
 				const start = startDate.toString("yyyy-MM-dd");
 				const end = startDate.addDays(days).toString("yyyy-MM-dd");
 
+				const eventParams = new URLSearchParams({
+					start: start,
+					end: end,
+					type: resourceType,
+				});
+				selectedDivisions.forEach((div) =>
+					eventParams.append("division", div),
+				);
+
 				const resEvents = await fetch(
-					`/api/schedule/events?start=${start}&end=${end}&type=${resourceType}`,
+					`/api/schedule/events?${eventParams.toString()}`,
 				);
 				if (resEvents.ok) {
 					const jsonEvt = await resEvents.json();
@@ -304,7 +498,28 @@ const Scheduler: React.FC = () => {
 		};
 
 		loadData();
-	}, [startDate, view, refreshKey, resourceType]);
+	}, [startDate, view, refreshKey, resourceType, selectedDivisions]);
+
+	useEffect(() => {
+		if (!wrapperRef.current) return;
+
+		console.log(
+			"height",
+			wrapperRef.current.getBoundingClientRect().height,
+		);
+
+		// Initial height
+		setSchedulerHeight(wrapperRef.current.getBoundingClientRect().height);
+
+		const observer = new ResizeObserver((entries) => {
+			for (let entry of entries) {
+				// Use bounding client rect to include any box-sizing details or simply contentRect
+				setSchedulerHeight(entry.contentRect.height);
+			}
+		});
+		observer.observe(wrapperRef.current);
+		return () => observer.disconnect();
+	}, []);
 
 	// Dynamic props for Scheduler
 	const getSchedulerProps = () => {
@@ -394,33 +609,49 @@ const Scheduler: React.FC = () => {
 				resourceType={resourceType}
 				setResourceType={setResourceType}
 				onExport={handleExport}
+				useInitials={useInitials}
+				setUseInitials={setUseInitials}
+				selectedDivisions={selectedDivisions}
+				setSelectedDivisions={setSelectedDivisions}
 			/>
 
-			<div className="flex-1 border overflow-hidden relative min-h-[400px] dp-wrapper">
+			<div
+				className="flex-1 border relative min-h-0 dp-wrapper"
+				ref={wrapperRef}
+				// className="flex-1 border overflow-hidden relative min-h-0 dp-wrapper"
+				// onMouseMove={handleMouseMove}
+				// onMouseLeave={() => setHoveredEvent(null)}
+			>
 				{isLoading && (
 					<div className="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
 						<Loader2 className="h-10 w-10 animate-spin text-primary" />
 					</div>
 				)}
-				<DayPilotScheduler
-					controlRef={setScheduler}
-					startDate={startDate}
-					days={schedulerProps.days}
-					scale={schedulerProps.scale}
-					eventHeight={70}
-					timeHeaders={schedulerProps.timeHeaders}
-					cellWidth={schedulerProps.cellWidth}
-					rowMarginTop={2}
-					rowMarginBottom={2}
-					resources={resources}
-					events={events}
-					onEventMoved={onEventMoved}
-					onEventResized={onEventResized}
-					onTimeRangeSelected={onTimeRangeSelected}
-					onEventClicked={onEventClicked}
-					onBeforeEventRender={onBeforeEventRender}
-					durationBarVisible={false}
-				/>
+				<div>
+					<DayPilotScheduler
+						controlRef={setScheduler}
+						heightSpec="Max"
+						height={Math.max(100, schedulerHeight - 62)} // 60px headers + 2px border pad
+						startDate={startDate}
+						days={schedulerProps.days}
+						scale={schedulerProps.scale}
+						eventHeight={70}
+						timeHeaders={schedulerProps.timeHeaders}
+						cellWidth={schedulerProps.cellWidth}
+						rowMarginTop={2}
+						rowMarginBottom={2}
+						resources={resources}
+						events={events}
+						onEventMoved={onEventMoved}
+						onEventResized={onEventResized}
+						onTimeRangeSelected={onTimeRangeSelected}
+						onEventClicked={onEventClicked}
+						onBeforeEventRender={onBeforeEventRender}
+						onBeforeRowHeaderRender={onBeforeRowHeaderRender}
+						durationBarVisible={false}
+						rowHeaderWidth={useInitials ? 60 : 150}
+					/>
+				</div>
 			</div>
 
 			<ActivityDetailsModal
@@ -441,6 +672,22 @@ const Scheduler: React.FC = () => {
 				endAt={quickCreateData?.endAt}
 				view={view}
 			/>
+
+			{hoveredEvent && (
+				<div
+					className="fixed z-50 pointer-events-none bg-popover text-popover-foreground rounded-md border shadow-md px-3 py-2 text-sm animate-in fade-in-0 zoom-in-95 max-w-xs"
+					style={{
+						left: tooltipPos.x + 15,
+						top: tooltipPos.y + 15,
+					}}
+				>
+					<div className="font-semibold">{hoveredEvent.title}</div>
+					<div className="text-xs text-muted-foreground mt-1">
+						{hoveredEvent.start}
+						{hoveredEvent.end ? ` - ${hoveredEvent.end}` : ""}
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

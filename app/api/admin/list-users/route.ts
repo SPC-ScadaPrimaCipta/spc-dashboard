@@ -30,6 +30,11 @@ export async function GET(req: Request) {
 				orderBy: { createdAt: "desc" },
 				include: {
 					roles: true, // Include roles for display
+					profile: {
+						include: {
+							division: true,
+						},
+					},
 				},
 			}),
 			prisma.user.count({ where }),
