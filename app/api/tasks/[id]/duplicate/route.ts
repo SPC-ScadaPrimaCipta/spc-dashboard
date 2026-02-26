@@ -15,7 +15,7 @@ function parseISOOrThrow(value: unknown, field: string): Date {
 
 export async function POST(
 	req: Request,
-	{ params }: { params: { id: string } },
+	{ params }: { params: Promise<{ id: string }> },
 ) {
 	try {
 		const canCreate = await hasPermission("manage", "schedules");
