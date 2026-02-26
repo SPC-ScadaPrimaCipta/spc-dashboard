@@ -30,6 +30,7 @@ model User {
   updatedTaskComments  TaskComment[] @relation("TaskCommentUpdatedBy")
   taskAuditLogs TaskAuditTrail[] @relation("TaskAuditTrailBy")
   scheduleResources ScheduleResource[]
+  profile UserProfile?
 
   @@map("user")
 }
@@ -520,4 +521,46 @@ model TaskResource {
 
   @@id([taskId, resourceId])
   @@index([resourceId])
+}
+
+model Division {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code      String?  @unique @db.VarChar(50)
+  name      String   @db.VarChar(150)
+
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+
+  color     String?  @db.VarChar(20)
+
+  createdAt DateTime @default(now())
+  createdById String?
+  updatedAt DateTime @updatedAt
+  updatedById String?
+
+  profiles  UserProfile[]
+
+  @@index([isActive, sortOrder])
+}
+
+model UserProfile {
+  userId     String  @id
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  initials   String? @db.VarChar(10)
+
+  divisionId String? @db.Uuid
+  division   Division? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+
+  // free text
+  position   String? @db.VarChar(150)
+
+  phone      String? @db.VarChar(50)
+  employeeNo String? @db.VarChar(50)
+
+  updatedAt  DateTime @updatedAt
+
+  sortOrder  Int?      @default(0)
+
+  @@index([divisionId])
 }

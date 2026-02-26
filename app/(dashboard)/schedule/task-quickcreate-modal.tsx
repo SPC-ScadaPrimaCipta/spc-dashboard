@@ -96,9 +96,11 @@ export function TaskQuickCreateModal({
 		setIsSubmitting(true);
 		try {
 			let finalEndAt = endAt;
-			if (endAt && view && view !== "Day") {
+			const isAllDayCheck = view !== "Day";
+
+			if (endAt && isAllDayCheck) {
 				const endObj = new Date(endAt.replace("Z", ""));
-				endObj.setDate(endObj.getDate() - 1);
+				endObj.setMinutes(endObj.getMinutes() - 1);
 				finalEndAt = format(endObj, "yyyy-MM-dd'T'HH:mm:ss") + ".000Z";
 			}
 
@@ -110,7 +112,7 @@ export function TaskQuickCreateModal({
 				endAt: finalEndAt,
 				type: "TASK",
 				priority: "MEDIUM",
-				allDay: true,
+				allDay: isAllDayCheck,
 				color: "#3b82f6",
 			};
 
@@ -152,7 +154,7 @@ export function TaskQuickCreateModal({
 	if (endAt) {
 		const endObj = new Date(endAt.replace("Z", ""));
 		if (isAllDayLike) {
-			endObj.setDate(endObj.getDate() - 1);
+			endObj.setMinutes(endObj.getMinutes() - 1);
 			formattedEnd = format(endObj, "MMM d, yyyy");
 		} else {
 			formattedEnd = format(endObj, "MMM d, yyyy h:mm a");

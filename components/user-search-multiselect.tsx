@@ -16,12 +16,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface UserSearchMultiSelectProps {
 	selectedIds: string[];
-	onChange: (ids: string[]) => void;
+	onChange: (ids: string[], selectedOptions?: Option[]) => void;
 	placeholder?: string;
 	single?: boolean;
 }
 
-interface Option {
+export interface Option {
 	value: string;
 	label: string;
 	description?: string;
@@ -82,24 +82,39 @@ export function UserSearchMultiSelect({
 
 		if (single) {
 			if (isSelected) {
-				onChange([]);
+				onChange([], []);
 			} else {
-				onChange([optionValue]);
+				const selectedOption = options.find(
+					(o) => o.value === optionValue,
+				);
+				onChange([optionValue], selectedOption ? [selectedOption] : []);
 				setOpen(false); // Close dropdown on select when single
 			}
 			return;
 		}
 
 		if (isSelected) {
-			onChange(selectedIds.filter((id) => id !== optionValue));
+			const newIds = selectedIds.filter((id) => id !== optionValue);
+			onChange(
+				newIds,
+				options.filter((o) => newIds.includes(o.value)),
+			);
 		} else {
-			onChange([...selectedIds, optionValue]);
+			const newIds = [...selectedIds, optionValue];
+			onChange(
+				newIds,
+				options.filter((o) => newIds.includes(o.value)),
+			);
 		}
 	};
 
 	const handleRemove = (valToRemove: string, e: MouseEvent) => {
 		e.stopPropagation();
-		onChange(selectedIds.filter((id) => id !== valToRemove));
+		const newIds = selectedIds.filter((id) => id !== valToRemove);
+		onChange(
+			newIds,
+			options.filter((o) => newIds.includes(o.value)),
+		);
 	};
 
 	return (

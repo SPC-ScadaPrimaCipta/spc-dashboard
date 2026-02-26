@@ -2,11 +2,6 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireUserId, handleApiError } from "@/lib/task-utils";
 
-import { formatInTimeZone } from "date-fns-tz";
-
-const tz = "Asia/Jakarta";
-const fmt = (d: Date) => formatInTimeZone(d, tz, "yyyy-MM-dd'T'HH:mm:ss");
-
 export async function GET(req: Request) {
 	try {
 		await requireUserId();
@@ -55,24 +50,20 @@ export async function GET(req: Request) {
 		});
 
 		const events = taskResources.map((tr) => {
-			let end = tr.task.endAt;
-			if (tr.task.allDay && end) {
-				const endDate = new Date(end);
-				endDate.setDate(endDate.getDate() + 1);
-				end = endDate;
-			}
-
 			return {
 				id: `${tr.taskId}_${tr.resourceId}`,
 				taskId: tr.taskId,
 				resourceId: tr.resourceId,
 				text: tr.task.title,
 				start: tr.task.startAt ? tr.task.startAt.toISOString() : "",
-				end: end ? end.toISOString() : "",
+				end: tr.task.endAt ? tr.task.endAt.toISOString() : "",
 				resource: tr.resourceId,
 				backColor: tr.task.color || tr.resource.color || "#3d85c6",
 				fontColor: "#fff",
 				bubbleHtml: `<strong>${tr.task.title}</strong>`,
+				tags: {
+					allDay: tr.task.allDay,
+				},
 			};
 		});
 

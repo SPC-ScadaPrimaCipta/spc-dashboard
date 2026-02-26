@@ -13,6 +13,7 @@ import {
 	FileText,
 	Calendar,
 	Server,
+	ChartBarIncreasing,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -39,6 +40,12 @@ export const rawMenu: MenuItem[] = [
 		href: "/schedule",
 		icon: Calendar,
 		permissions: [{ resource: "schedules", action: "read" }],
+	},
+	{
+		name: "Gantt",
+		href: "/gantt",
+		icon: ChartBarIncreasing,
+		permissions: [{ resource: "gantt", action: "read" }],
 	},
 	{
 		name: "Resources",

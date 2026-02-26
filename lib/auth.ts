@@ -34,6 +34,14 @@ export const auth = betterAuth({
 		},
 	},
 
+	// enable account linking
+	account: {
+		accountLinking: {
+			enabled: true,
+			trustedProviders: ["microsoft"],
+		},
+	},
+
 	// Use Prisma + PostgreSQL
 	database: prismaAdapter(prisma, {
 		provider: "postgresql",

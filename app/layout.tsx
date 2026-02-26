@@ -15,9 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "NextJS Dashboard Template",
-	description:
-		"A modern dashboard template built with Next.js and Tailwind CSS.",
+	title: "SPC Dashboard",
+	description: "Monitor resources (people, rooms, and vehicle) usage.",
 };
 
 export default function RootLayout({
@@ -43,4 +42,3 @@ export default function RootLayout({
 		</html>
 	);
 }
-

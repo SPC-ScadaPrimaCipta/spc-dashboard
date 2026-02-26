@@ -17,7 +17,7 @@ export default function ScheduleLayout({
 
 	return (
 		<div className="flex flex-col h-full space-y-6">
-			<div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-0 justify-between">
+			{/* <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-0 justify-between">
 				<div className="flex flex-col">
 					<h1 className="text-2xl font-semibold tracking-tight">
 						Schedule
@@ -27,7 +27,7 @@ export default function ScheduleLayout({
 					</p>
 				</div>
 				<ScheduleTabs />
-			</div>
+			</div> */}
 			<div className="flex flex-col h-full">
 				<div className="flex-1 h-full min-h-0 overflow-hidden">
 					{children}

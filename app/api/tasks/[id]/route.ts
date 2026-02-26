@@ -21,18 +21,7 @@ export async function GET(
 			where: { id },
 			include: {
 				status: true,
-				assignments: {
-					include: {
-						assignee: {
-							select: {
-								id: true,
-								name: true,
-								email: true,
-								image: true,
-							},
-						},
-					},
-				},
+
 				labels: {
 					include: {
 						label: true,
@@ -43,6 +32,14 @@ export async function GET(
 						resource: {
 							include: {
 								resourceType: true,
+								user: {
+									select: {
+										id: true,
+										name: true,
+										email: true,
+										image: true,
+									},
+								},
 							},
 						},
 					},
@@ -86,6 +83,19 @@ export async function GET(
 
 		const enrichedTask = {
 			...task,
+			assignments: task.resources
+				.filter((r: any) => r.resource?.resourceType?.code === "PEOPLE")
+				.map((r: any) => ({
+					id: r.resourceId,
+					taskId: task.id,
+					assigneeId: r.resource?.user?.id || r.resourceId,
+					assignee: r.resource?.user || {
+						id: r.resourceId,
+						name: r.resource?.name,
+						email: null,
+						image: null,
+					},
+				})),
 			comments: comments.map((c: any) => ({
 				...c,
 				author:
@@ -151,19 +161,29 @@ export async function PATCH(
 					where: { slug: { in: toAdd } },
 					select: { id: true, slug: true },
 				});
-				// Validate existence
+
 				const foundSlugs = labels.map((l: any) => l.slug);
 				const missing = toAdd.filter((s) => !foundSlugs.includes(s));
+
+				let createdLabels: any[] = [];
 				if (missing.length > 0) {
-					return NextResponse.json(
-						{
-							ok: false,
-							error: `Labels not found: ${missing.join(", ")}`,
-						},
-						{ status: 400 },
+					createdLabels = await Promise.all(
+						missing.map((slug) =>
+							prisma.label.create({
+								data: {
+									name: slug,
+									slug: slug,
+									createdById: userId,
+								},
+								select: { id: true, slug: true },
+							}),
+						),
 					);
 				}
-				newLabelIds = labels.map((l: any) => l.id);
+
+				newLabelIds = [...labels, ...createdLabels].map(
+					(l: any) => l.id,
+				);
 				labelsToCreate = newLabelIds;
 			}
 

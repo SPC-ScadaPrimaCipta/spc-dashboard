@@ -122,12 +122,12 @@ export default function LoginPage() {
 						Continue with Microsoft
 					</Button>
 
-					<p className="text-center text-sm text-muted-foreground">
+					{/* <p className="text-center text-sm text-muted-foreground">
 						Don’t have an account?{" "}
 						<a href="/auth/register" className="underline">
 							Register
 						</a>
-					</p>
+					</p> */}
 				</CardContent>
 			</Card>
 		</div>

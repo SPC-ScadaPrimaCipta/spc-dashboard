@@ -7,7 +7,7 @@ async function getRequestOrigin() {
 
 	// Prefer proxy headers (Vercel/Nginx/Traefik)
 	const proto = h.get("x-forwarded-proto") ?? "http";
-	const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+	const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3002";
 
 	return `${proto}://${host}`;
 }

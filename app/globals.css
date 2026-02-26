@@ -131,3 +131,8 @@ body {
 .dark .dp-wrapper {
 	filter: invert(0.93) hue-rotate(180deg);
 }
+
+.dp-wrapper,
+.dp-wrapper * {
+	font-family: var(--font-sans) !important;
+}

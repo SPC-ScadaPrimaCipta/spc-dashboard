@@ -9,6 +9,10 @@ export async function GET(req: Request) {
 		const { searchParams } = new URL(req.url);
 		const resourceTypeId = searchParams.get("id");
 		const resourceTypeCode = searchParams.get("type");
+		const divisionParams = searchParams.getAll("division");
+		const divisions = divisionParams
+			.flatMap((d) => d.split(","))
+			.filter(Boolean);
 
 		const where: any = {
 			isActive: true,
@@ -24,6 +28,16 @@ export async function GET(req: Request) {
 			};
 		}
 
+		if (resourceTypeCode === "PEOPLE" && divisions.length > 0) {
+			where.user = {
+				profile: {
+					division: {
+						code: { in: divisions },
+					},
+				},
+			};
+		}
+
 		const resources = await prisma.scheduleResource.findMany({
 			where,
 			include: {
@@ -34,6 +48,19 @@ export async function GET(req: Request) {
 						name: true,
 						image: true,
 						email: true,
+						profile: {
+							select: {
+								position: true,
+								division: {
+									select: {
+										name: true,
+										code: true,
+										color: true,
+									},
+								},
+								sortOrder: true,
+							},
+						},
 					},
 				},
 			},
@@ -42,7 +69,20 @@ export async function GET(req: Request) {
 			},
 		});
 
-		return NextResponse.json({ ok: true, data: resources });
+		let sortedResources = resources;
+
+		if (resourceTypeCode === "PEOPLE") {
+			// Sort by user profile sortOrder
+			sortedResources = resources.sort((a, b) => {
+				const sortOrderA = a.user?.profile?.sortOrder ?? 0;
+				const sortOrderB = b.user?.profile?.sortOrder ?? 0;
+				if (sortOrderA < sortOrderB) return -1;
+				if (sortOrderA > sortOrderB) return 1;
+				return 0;
+			});
+		}
+
+		return NextResponse.json({ ok: true, data: sortedResources });
 	} catch (error) {
 		return handleApiError(error);
 	}

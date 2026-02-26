@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScheduleResource, ResourceType } from "@/components/resources/types";
 import {
 	Dialog,
@@ -51,7 +51,7 @@ export function ResourceModal({
 	});
 
 	// Reset form when modal opens or resource changes
-	useState(() => {
+	useEffect(() => {
 		if (isOpen) {
 			form.reset({
 				name: resource?.name || "",
@@ -59,7 +59,7 @@ export function ResourceModal({
 				userId: resource?.userId || "",
 			});
 		}
-	});
+	}, [isOpen, resource, resourceType, form]);
 
 	const onSubmit = async (values: z.infer<typeof formSchema>) => {
 		try {
@@ -114,6 +114,51 @@ export function ResourceModal({
 					onSubmit={form.handleSubmit(onSubmit)}
 					className="space-y-4"
 				>
+					{/* For PEOPLE types, Linked Employee comes FIRST */}
+					{(resourceType?.code === "PERSON" ||
+						resourceType?.code === "PEOPLE") && (
+						<div className="space-y-2">
+							<Label>Linked Employee</Label>
+							<Controller
+								control={form.control}
+								name="userId"
+								render={({ field }) => (
+									<UserSearchMultiSelect
+										selectedIds={
+											field.value ? [field.value] : []
+										}
+										onChange={(val, opts) => {
+											const selectedId = val[0] || "";
+											// Ensure both fields update reliably without race conditions
+											form.setValue(
+												"userId",
+												selectedId,
+												{
+													shouldValidate: true,
+													shouldDirty: true,
+												},
+											);
+
+											// Auto-fill name field from selected option label
+											if (opts && opts[0]?.label) {
+												form.setValue(
+													"name",
+													opts[0].label,
+													{
+														shouldValidate: true,
+														shouldDirty: true,
+													},
+												);
+											}
+										}}
+										placeholder="Select an employee..."
+										single
+									/>
+								)}
+							/>
+						</div>
+					)}
+
 					<div className="space-y-2">
 						<Label htmlFor="name">Name</Label>
 						<Input
@@ -127,29 +172,6 @@ export function ResourceModal({
 							</p>
 						)}
 					</div>
-
-					{(resourceType?.code === "PERSON" ||
-						resourceType?.code === "PEOPLE") && (
-						<div className="space-y-2">
-							<Label>Linked Employee</Label>
-							<Controller
-								control={form.control}
-								name="userId"
-								render={({ field }) => (
-									<UserSearchMultiSelect
-										selectedIds={
-											field.value ? [field.value] : []
-										}
-										onChange={(val) =>
-											field.onChange(val[0] || "")
-										}
-										placeholder="Select an employee..."
-										single
-									/>
-								)}
-							/>
-						</div>
-					)}
 
 					{/* Hidden input for resourceTypeId to keep it in form state seamlessly */}
 					<input

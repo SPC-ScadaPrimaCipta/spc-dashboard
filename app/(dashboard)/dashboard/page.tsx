@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -13,6 +14,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useRequirePermission } from "@/hooks/use-require-permission";
 
 const KPI = [
 	{ label: "Monthly Recurring Revenue", value: "$82.4K", delta: "+12.4%" },
@@ -80,6 +82,14 @@ const ACTIVITY = [
 ];
 
 export default function DashboardPage() {
+	const { isAuthorized, isLoading: authLoading } = useRequirePermission(
+		"read",
+		"dashboard",
+	);
+
+	if (!isAuthorized) {
+		return null; // Redirecting...
+	}
 	return (
 		<div className="space-y-8">
 			<header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
