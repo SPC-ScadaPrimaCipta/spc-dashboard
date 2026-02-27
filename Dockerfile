@@ -13,7 +13,7 @@ RUN apk add --no-cache openssl libc6-compat
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-ENV DATABASE_URL="postgresql://user:pass@localhost:5432/db"
+ENV DATABASE_URL="postgresql://user:pass@localhost:5433/db"
 RUN npx prisma generate
 
 RUN npm run build
