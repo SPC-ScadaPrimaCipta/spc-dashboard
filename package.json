@@ -6,7 +6,8 @@
 		"dev": "next dev -p 3002 -H 0.0.0.0",
 		"build": "next build",
 		"start": "next start -H 0.0.0.0",
-		"lint": "next lint ."
+		"lint": "next lint .",
+		"postinstall": "prisma generate"
 	},
 	"dependencies": {
 		"@daypilot/daypilot-lite-react": "^5.4.0",
