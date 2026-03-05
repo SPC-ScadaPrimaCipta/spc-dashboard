@@ -10,15 +10,18 @@ export function calculateDayPilotNewDate(
 	oldDate: DayPilot.Date,
 	type: "start" | "end",
 ): string {
-	const processDate = type === "end" ? newDate.addDays(-1) : newDate;
-
-	if (view !== "Day") {
-		const dateStr = processDate.toString("yyyy-MM-dd");
-		const timeStr = oldDate.toString("HH:mm:ss");
-		const newDateDP = new DayPilot.Date(`${dateStr}T${timeStr}`);
-		return formatDayPilotDate(newDateDP);
+	if (view === "Day") {
+		return formatDayPilotDate(newDate);
 	}
-	return formatDayPilotDate(processDate);
+
+	const processDate = type === "end" ? newDate.addMinutes(-1) : newDate;
+
+	console.log("process date", processDate);
+
+	const dateStr = processDate.toString("yyyy-MM-dd");
+	const timeStr = processDate.toString("HH:mm:ss");
+	const newDateDP = new DayPilot.Date(`${dateStr}T${timeStr}`);
+	return formatDayPilotDate(newDateDP);
 }
 
 export const renderPeopleRowHeader = (row: any, useInitials: boolean) => {

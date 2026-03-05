@@ -19,6 +19,7 @@ interface UserSearchMultiSelectProps {
 	onChange: (ids: string[], selectedOptions?: Option[]) => void;
 	placeholder?: string;
 	single?: boolean;
+	source?: "USERS" | "RESOURCES";
 }
 
 export interface Option {
@@ -32,6 +33,7 @@ export function UserSearchMultiSelect({
 	onChange,
 	placeholder,
 	single = false,
+	source = "USERS",
 }: UserSearchMultiSelectProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
@@ -46,22 +48,40 @@ export function UserSearchMultiSelect({
 		const fetchOptions = async () => {
 			setLoading(true);
 			try {
-				// Fetch employees from /api/users
 				const params = new URLSearchParams();
 				if (search) params.set("search", search);
 
-				const res = await fetch(`/api/users?${params.toString()}`);
-				if (!res.ok) throw new Error("Failed to fetch users");
+				let url = "";
+				if (source === "RESOURCES") {
+					params.set("type", "PEOPLE");
+					url = `/api/schedule/resources?${params.toString()}`;
+				} else {
+					url = `/api/users?${params.toString()}`;
+				}
+
+				const res = await fetch(url);
+				if (!res.ok)
+					throw new Error(`Failed to fetch ${source.toLowerCase()}`);
 				const json = await res.json();
 
 				if (json.ok && Array.isArray(json.data)) {
-					setOptions(
-						json.data.map((u: any) => ({
-							value: u.id,
-							label: u.name,
-							description: u.email || "-",
-						})),
-					);
+					if (source === "RESOURCES") {
+						setOptions(
+							json.data.map((r: any) => ({
+								value: r.id,
+								label: r.name,
+								description: r.user?.email || "-",
+							})),
+						);
+					} else {
+						setOptions(
+							json.data.map((u: any) => ({
+								value: u.id,
+								label: u.name,
+								description: u.email || "-",
+							})),
+						);
+					}
 				} else {
 					setOptions([]);
 				}
@@ -75,7 +95,7 @@ export function UserSearchMultiSelect({
 
 		const debounce = setTimeout(fetchOptions, 300);
 		return () => clearTimeout(debounce);
-	}, [search]);
+	}, [search, source]);
 
 	const handleSelect = (optionValue: string) => {
 		const isSelected = selectedValues.includes(optionValue);

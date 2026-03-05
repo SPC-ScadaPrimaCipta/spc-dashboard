@@ -8,7 +8,9 @@ export async function GET(req: Request) {
 		const userId = await requireUserId();
 		const { searchParams } = new URL(req.url);
 		const resourceTypeId = searchParams.get("id");
-		const resourceTypeCode = searchParams.get("type");
+		let resourceType = searchParams.get("type");
+		const resourceTypeCode =
+			resourceType === "TIMEOFF" ? "PEOPLE" : resourceType;
 		const divisionParams = searchParams.getAll("division");
 		const divisions = divisionParams
 			.flatMap((d) => d.split(","))

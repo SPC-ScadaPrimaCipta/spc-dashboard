@@ -10,7 +10,70 @@ export async function GET(req: Request) {
 		const startParam = searchParams.get("start");
 		const endParam = searchParams.get("end");
 		const resourceTypeCode = searchParams.get("type");
+		const divisionParams = searchParams.getAll("division");
+		const divisions = divisionParams
+			.flatMap((d) => d.split(","))
+			.filter(Boolean);
 
+		const startDate = startParam ? new Date(startParam) : null;
+		const endDate = endParam ? new Date(endParam) : null;
+		const isValidRange =
+			startDate &&
+			endDate &&
+			!isNaN(startDate.getTime()) &&
+			!isNaN(endDate.getTime());
+
+		if (resourceTypeCode === "TIMEOFF") {
+			const where: any = {};
+
+			if (isValidRange) {
+				where.AND = [
+					{ startAt: { lte: endDate } },
+					{ endAt: { gte: startDate } },
+				];
+			}
+
+			if (divisions.length > 0) {
+				where.resource = {
+					user: {
+						profile: {
+							division: {
+								code: { in: divisions },
+							},
+						},
+					},
+				};
+			}
+
+			const timeOffRequests = await prisma.timeOffRequest.findMany({
+				where,
+				include: {
+					type: true,
+					resource: true,
+				},
+			});
+
+			const events = timeOffRequests.map((to) => ({
+				id: to.id,
+				resourceId: to.resourceId,
+				text: `${to.type.name}${to.reason ? `: ${to.reason}` : ""}`,
+				start: to.startAt.toISOString(),
+				end: to.endAt.toISOString(),
+				resource: to.resourceId,
+				backColor: to.type.color || "#e06666",
+				fontColor: "#fff",
+				bubbleHtml: `<strong>${to.type.name}</strong><br/>${to.reason || ""}`,
+				tags: {
+					allDay: to.allDay,
+					type: "TIMEOFF",
+					status: to.status,
+				},
+			}));
+
+			return NextResponse.json({ ok: true, data: events });
+		}
+
+		// Default Task logic
 		const where: any = {
 			task: {
 				startAt: { not: null },
@@ -26,19 +89,27 @@ export async function GET(req: Request) {
 			};
 		}
 
-		if (startParam && endParam) {
-			const startDate = new Date(startParam);
-			const endDate = new Date(endParam);
+		if (divisions.length > 0) {
+			where.resource = {
+				...where.resource,
+				user: {
+					profile: {
+						division: {
+							code: { in: divisions },
+						},
+					},
+				},
+			};
+		}
 
-			if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-				where.task = {
-					...where.task,
-					AND: [
-						{ startAt: { lte: endDate } },
-						{ endAt: { gte: startDate } },
-					],
-				};
-			}
+		if (isValidRange) {
+			where.task = {
+				...where.task,
+				AND: [
+					{ startAt: { lte: endDate } },
+					{ endAt: { gte: startDate } },
+				],
+			};
 		}
 
 		const taskResources = await prisma.taskResource.findMany({
@@ -63,6 +134,7 @@ export async function GET(req: Request) {
 				bubbleHtml: `<strong>${tr.task.title}</strong>`,
 				tags: {
 					allDay: tr.task.allDay,
+					type: "TASK",
 				},
 			};
 		});

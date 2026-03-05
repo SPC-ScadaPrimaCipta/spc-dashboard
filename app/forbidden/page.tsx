@@ -18,7 +18,7 @@ export default function ForbiddenPage() {
 			</div>
 			<div className="flex gap-4">
 				<Button asChild variant="default">
-					<Link href="/dashboard">Return to Dashboard</Link>
+					<Link href="/schedule">Return to Schedule</Link>
 				</Button>
 				<Button asChild variant="outline">
 					<Link href="/auth/login">Login with different account</Link>

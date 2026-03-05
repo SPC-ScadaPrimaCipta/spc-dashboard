@@ -31,6 +31,8 @@ model User {
   taskAuditLogs TaskAuditTrail[] @relation("TaskAuditTrailBy")
   scheduleResources ScheduleResource[]
   profile UserProfile?
+  createdTimeOffRequests TimeOffRequest[] @relation("TimeOffRequestCreatedBy")
+  updatedTimeOffRequests TimeOffRequest[] @relation("TimeOffRequestUpdatedBy")
 
   @@map("user")
 }
@@ -500,10 +502,11 @@ model ScheduleResource {
 
   createdAt      DateTime     @default(now())
   createdById    String?
-  updatedAt      DateTime     @updatedAt
+  updatedAt      DateTime?    @updatedAt
   updatedById    String?
 
   taskLinks      TaskResource[]
+  timeOffRequests TimeOffRequest[]
 
   @@index([resourceTypeId, isActive])
   @@index([userId])
@@ -563,4 +566,67 @@ model UserProfile {
   sortOrder  Int?      @default(0)
 
   @@index([divisionId])
+}
+
+model TimeOffType {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(120)
+  description String?
+  color       String?  @db.VarChar(20)
+
+  isPaid      Boolean  @default(false)
+  isBlocking  Boolean  @default(true)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  createdBy   String?
+  updatedAt   DateTime? @updatedAt
+  updatedBy   String?
+
+  requests    TimeOffRequest[]
+
+  @@index([isActive, sortOrder])
+}
+
+enum TimeOffStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model TimeOffRequest {
+  id            String       @id @default(uuid()) @db.Uuid
+
+  // Link to PERSON resource (not directly User)
+  resourceId    String       @db.Uuid
+  resource      ScheduleResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  typeId        String       @db.Uuid
+  type          TimeOffType  @relation(fields: [typeId], references: [id])
+
+  status        TimeOffStatus @default(DRAFT)
+
+  startAt       DateTime
+  endAt         DateTime
+  allDay        Boolean      @default(true)
+  timezone      String?
+  durationMin   Int?
+
+  reason        String?
+  note          String?
+
+  createdAt     DateTime     @default(now())
+  createdById   String?
+  createdBy     User?        @relation("TimeOffRequestCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedAt     DateTime?    @updatedAt
+  updatedById   String?
+  updatedBy     User?        @relation("TimeOffRequestUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([resourceId, startAt, endAt])
+  @@index([status, startAt])
+  @@index([typeId])
 }

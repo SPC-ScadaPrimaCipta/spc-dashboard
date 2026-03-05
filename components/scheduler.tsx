@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ActivityDetailsModal } from "@/app/(dashboard)/schedule/task-detail-modal";
+import { TimeOffDetailModal } from "@/app/(dashboard)/schedule/timeoff-detail-modal";
 import { TaskQuickCreateModal } from "@/app/(dashboard)/schedule/task-quickcreate-modal";
+import { TimeOffQuickCreateModal } from "@/app/(dashboard)/schedule/timeoff-quickcreate-modal";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { DayPilot, DayPilotScheduler } from "@daypilot/daypilot-lite-react";
 import { Loader2 } from "lucide-react";
@@ -20,21 +23,43 @@ const Scheduler: React.FC = () => {
 	const [schedulerHeight, setSchedulerHeight] = useState<number>(400);
 	const [resources, setResources] = useState<DayPilot.ResourceData[]>([]);
 	const [events, setEvents] = useState<DayPilot.EventData[]>([]);
+	const [timeOffEvents, setTimeOffEvents] = useState<DayPilot.EventData[]>(
+		[],
+	);
 
-	// Default view
-	const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">(
-		"Month",
+	const searchParams = useSearchParams();
+	const router = useRouter();
+	const pathname = usePathname();
+
+	// Read initial state from URL or defaults
+	const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">(() => {
+		const v = searchParams.get("v");
+		return (
+			["Day", "Week", "Month", "Year"].includes(v as string) ? v : "Month"
+		) as any;
+	});
+
+	const [startDate, setStartDate] = useState<DayPilot.Date>(() => {
+		const d = searchParams.get("date");
+		if (d) return new DayPilot.Date(d);
+		return new DayPilot.Date().firstDayOfMonth();
+	});
+
+	const [resourceType, setResourceType] = useState<string>(
+		() => searchParams.get("type") || "PEOPLE",
 	);
-	const [startDate, setStartDate] = useState<DayPilot.Date>(
-		new DayPilot.Date().firstDayOfMonth(),
+
+	const [selectedDivisions, setSelectedDivisions] = useState<string[]>(() =>
+		searchParams.getAll("div"),
 	);
+
 	const [refreshKey, setRefreshKey] = useState(0);
-	const [resourceType, setResourceType] = useState<string>("PEOPLE");
 	const [isLoading, setIsLoading] = useState<boolean>(true);
 	const [useInitials, setUseInitials] = useState<boolean>(false);
-	const [selectedDivisions, setSelectedDivisions] = useState<string[]>([]);
+	const [isSimplified, setIsSimplified] = useState<boolean>(false);
 
 	const [isModalVisible, setIsModalVisible] = useState(false);
+	const [isTimeOffModalVisible, setIsTimeOffModalVisible] = useState(false);
 	const [selectedActivity, setSelectedActivity] = useState<any>(null);
 
 	const [clipboard, setClipboard] = useState<{
@@ -51,6 +76,8 @@ const Scheduler: React.FC = () => {
 	} | null>(null);
 
 	const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
+	const [isTimeOffQuickCreateOpen, setIsTimeOffQuickCreateOpen] =
+		useState(false);
 	const [quickCreateData, setQuickCreateData] = useState<{
 		startAt?: string;
 		endAt?: string;
@@ -170,6 +197,7 @@ const Scheduler: React.FC = () => {
 
 	const onEventMoved = async (args: DayPilot.SchedulerEventMovedArgs) => {
 		try {
+			const eventType = args.e.data.tags?.type || "TASK";
 			const startAt = calculateDayPilotNewDate(
 				view,
 				args.newStart,
@@ -184,7 +212,12 @@ const Scheduler: React.FC = () => {
 			);
 			const resourceId = args.newResource;
 
-			const res = await fetch(`/api/tasks/${args.e.data.taskId}`, {
+			const apiUrl =
+				eventType === "TIMEOFF"
+					? `/api/timeoff/${args.e.id()}`
+					: `/api/tasks/${args.e.data.taskId}`;
+
+			const res = await fetch(apiUrl, {
 				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",
@@ -198,24 +231,27 @@ const Scheduler: React.FC = () => {
 
 			if (!res.ok) {
 				const err = await res.json();
-				console.error("Failed to update task", err);
-				toast.error("Failed to update task");
+				console.error(`Failed to update ${eventType}`, err);
+				toast.error(`Failed to update ${eventType.toLowerCase()}`);
 				setRefreshKey((prev) => prev + 1); // Revert by refreshing
 			} else {
-				const json = await res.json();
-				console.log("Task updated successfully", json);
-				toast.success("Task updated successfully");
+				toast.success(
+					`${eventType === "TIMEOFF" ? "Time off" : "Task"} updated successfully`,
+				);
 			}
 		} catch (error) {
-			console.error("Error updating task", error);
-			toast.error("Failed to update task");
+			console.error("Error updating event", error);
+			toast.error("Failed to update event");
 			setRefreshKey((prev) => prev + 1);
 		}
 	};
 
 	const onEventResized = async (args: DayPilot.SchedulerEventResizedArgs) => {
 		try {
+			const eventType = args.e.data.tags?.type || "TASK";
 			const payload: any = {};
+
+			console.log(args);
 
 			if (args.what === "start") {
 				payload.startAt = calculateDayPilotNewDate(
@@ -233,7 +269,14 @@ const Scheduler: React.FC = () => {
 				);
 			}
 
-			const res = await fetch(`/api/tasks/${args.e.data.taskId}`, {
+			console.log("payload", payload);
+
+			const apiUrl =
+				eventType === "TIMEOFF"
+					? `/api/timeoff/${args.e.id()}`
+					: `/api/tasks/${args.e.data.taskId}`;
+
+			const res = await fetch(apiUrl, {
 				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",
@@ -243,17 +286,17 @@ const Scheduler: React.FC = () => {
 
 			if (!res.ok) {
 				const err = await res.json();
-				console.error("Failed to update task", err);
-				toast.error("Failed to update task");
+				console.error(`Failed to update ${eventType}`, err);
+				toast.error(`Failed to update ${eventType.toLowerCase()}`);
 				setRefreshKey((prev) => prev + 1); // Revert by refreshing
 			} else {
-				const json = await res.json();
-				console.log("Task updated successfully", json);
-				toast.success("Task updated successfully");
+				toast.success(
+					`${eventType === "TIMEOFF" ? "Time off" : "Task"} updated successfully`,
+				);
 			}
 		} catch (error) {
-			console.error("Error updating task", error);
-			toast.error("Failed to update task");
+			console.error("Error updating event", error);
+			toast.error("Failed to update event");
 			setRefreshKey((prev) => prev + 1);
 		}
 	};
@@ -337,7 +380,7 @@ const Scheduler: React.FC = () => {
 	const onBeforeRowHeaderRender = (
 		args: DayPilot.SchedulerBeforeRowHeaderRenderArgs,
 	) => {
-		if (resourceType === "PEOPLE") {
+		if (resourceType === "PEOPLE" || resourceType === "TIMEOFF") {
 			args.row.html = renderPeopleRowHeader(args.row, useInitials);
 		}
 	};
@@ -363,10 +406,26 @@ const Scheduler: React.FC = () => {
 		}
 	};
 
+	const timeOffMap = useMemo(() => {
+		const map = new Map<string, { start: number; end: number }[]>();
+		timeOffEvents.forEach((e) => {
+			const resId = String(e.resource);
+			const list = map.get(resId) || [];
+			list.push({
+				start: new DayPilot.Date(e.start).getTime(),
+				end: new DayPilot.Date(e.end).getTime(),
+			});
+			map.set(resId, list);
+		});
+		return map;
+	}, [timeOffEvents]);
+
 	const onBeforeCellRender = (
 		args: DayPilot.SchedulerBeforeCellRenderArgs,
 	) => {
 		const now = new DayPilot.Date();
+
+		// Default background for today
 		if (view === "Day") {
 			if (
 				args.cell.start.getTime() <= now.getTime() &&
@@ -378,6 +437,26 @@ const Scheduler: React.FC = () => {
 			const today = now.getDatePart();
 			if (args.cell.start.getDatePart().getTime() === today.getTime()) {
 				args.cell.properties.backColor = "#f0f9ff"; // Lighter blue
+			}
+		}
+
+		// Highlight time off for PEOPLE resource type
+		if (resourceType === "PEOPLE") {
+			const resourceId = String(args.cell.resource);
+			const cellStart = args.cell.start.getTime();
+			const cellEnd = args.cell.end.getTime();
+
+			const resourceTimeOff = timeOffMap.get(resourceId);
+			if (resourceTimeOff) {
+				const isOnLeave = resourceTimeOff.some((to) => {
+					return to.start < cellEnd && to.end > cellStart;
+				});
+
+				if (isOnLeave) {
+					args.cell.properties.backColor = "#fee2e2"; // Light red (Tailwind red-100)
+					args.cell.properties.html =
+						'<div style="position: absolute; bottom: 2px; right: 2px; color: #ef4444; font-size: 8px; font-weight: 600;">OFF</div>';
+				}
 			}
 		}
 	};
@@ -407,7 +486,11 @@ const Scheduler: React.FC = () => {
 			resourceName: resourceName || String(args.resource),
 		});
 
-		setIsQuickCreateOpen(true);
+		if (resourceType === "TIMEOFF") {
+			setIsTimeOffQuickCreateOpen(true);
+		} else {
+			setIsQuickCreateOpen(true);
+		}
 		console.log("Time range selected", args);
 	};
 
@@ -448,15 +531,27 @@ const Scheduler: React.FC = () => {
 	};
 
 	const onEventClicked = async (args: DayPilot.SchedulerEventClickedArgs) => {
-		setSelectedActivity({
-			id: args.e.data.taskId,
-			title: args.e.text(),
-			startDate: args.e.start().toString(),
-			endDate: args.e.end().toString(),
-			allDay: args.e.data.tags?.allDay,
-			// Add more properties if needed by the modal to fetch details or display initial info
-		});
-		setIsModalVisible(true);
+		const eventType = args.e.data.tags?.type || "TASK";
+
+		if (eventType === "TIMEOFF") {
+			setSelectedActivity({
+				id: args.e.id(),
+				title: args.e.text(),
+				startDate: args.e.start().toString(),
+				endDate: args.e.end().toString(),
+				allDay: args.e.data.tags?.allDay,
+			});
+			setIsTimeOffModalVisible(true);
+		} else {
+			setSelectedActivity({
+				id: args.e.data.taskId || args.e.id(),
+				title: args.e.text(),
+				startDate: args.e.start().toString(),
+				endDate: args.e.end().toString(),
+				allDay: args.e.data.tags?.allDay,
+			});
+			setIsModalVisible(true);
+		}
 	};
 
 	const handleCopyFromModal = (taskEntity: any) => {
@@ -539,6 +634,30 @@ const Scheduler: React.FC = () => {
 						setEvents(jsonEvt.data);
 					}
 				}
+
+				// 3. Fetch timeoff if resourceType is PEOPLE
+				if (resourceType === "PEOPLE") {
+					const timeOffParams = new URLSearchParams({
+						start: start,
+						end: end,
+						type: "TIMEOFF",
+					});
+					selectedDivisions.forEach((div) =>
+						timeOffParams.append("division", div),
+					);
+
+					const resTimeOff = await fetch(
+						`/api/schedule/events?${timeOffParams.toString()}`,
+					);
+					if (resTimeOff.ok) {
+						const jsonTO = await resTimeOff.json();
+						if (jsonTO.ok) {
+							setTimeOffEvents(jsonTO.data);
+						}
+					}
+				} else {
+					setTimeOffEvents([]);
+				}
 			} catch (error) {
 				console.error("Failed to fetch schedule data", error);
 			} finally {
@@ -584,6 +703,20 @@ const Scheduler: React.FC = () => {
 		return days;
 	};
 
+	// Keep URL in sync with state
+	useEffect(() => {
+		const params = new URLSearchParams();
+		params.set("v", view);
+		params.set("type", resourceType);
+		params.set("date", startDate.toString("yyyy-MM-dd"));
+		selectedDivisions.forEach((div) => params.append("div", div));
+
+		const query = params.toString();
+		const url = `${pathname}${query ? `?${query}` : ""}`;
+
+		router.replace(url, { scroll: false });
+	}, [view, resourceType, startDate, selectedDivisions, pathname, router]);
+
 	const handleExport = (format: "json" | "xlsx") => {
 		let days = fetchDays();
 		const start = startDate.toString("yyyy-MM-dd");
@@ -610,6 +743,8 @@ const Scheduler: React.FC = () => {
 				setSelectedDivisions={setSelectedDivisions}
 				clipboard={clipboard}
 				onCancelCopy={() => setClipboard(null)}
+				isSimplified={isSimplified}
+				setIsSimplified={setIsSimplified}
 			/>
 
 			<div
@@ -662,10 +797,28 @@ const Scheduler: React.FC = () => {
 				onCopy={handleCopyFromModal}
 			/>
 
+			<TimeOffDetailModal
+				isVisible={isTimeOffModalVisible}
+				onClose={() => setIsTimeOffModalVisible(false)}
+				activity={selectedActivity}
+				onUpdate={() => setRefreshKey((prev) => prev + 1)}
+			/>
+
 			<TaskQuickCreateModal
 				isOpen={isQuickCreateOpen}
 				onClose={() => setIsQuickCreateOpen(false)}
 				onTaskCreated={() => setRefreshKey((prev) => prev + 1)}
+				resourceId={quickCreateData?.resourceId}
+				resourceName={quickCreateData?.resourceName}
+				startAt={quickCreateData?.startAt}
+				endAt={quickCreateData?.endAt}
+				view={view}
+			/>
+
+			<TimeOffQuickCreateModal
+				isOpen={isTimeOffQuickCreateOpen}
+				onClose={() => setIsTimeOffQuickCreateOpen(false)}
+				onCreated={() => setRefreshKey((prev) => prev + 1)}
 				resourceId={quickCreateData?.resourceId}
 				resourceName={quickCreateData?.resourceName}
 				startAt={quickCreateData?.startAt}

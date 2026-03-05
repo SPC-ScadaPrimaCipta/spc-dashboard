@@ -9,6 +9,9 @@ import {
 	Download,
 	Filter,
 	Check,
+	Calendar,
+	Maximize2,
+	EyeOff,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -17,6 +20,7 @@ const RESOURCE_TYPES = [
 	{ id: "PEOPLE", label: "People", icon: Users },
 	{ id: "VEHICLE", label: "Vehicles", icon: Car },
 	{ id: "ROOM", label: "Rooms", icon: Building },
+	{ id: "TIMEOFF", label: "Time Off", icon: Calendar },
 ] as const;
 import {
 	Tooltip,
@@ -43,6 +47,8 @@ interface ScheduleNavigationProps {
 	setSelectedDivisions: (divs: string[]) => void;
 	clipboard?: any;
 	onCancelCopy?: () => void;
+	isSimplified: boolean;
+	setIsSimplified: (v: boolean) => void;
 }
 
 export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
@@ -59,6 +65,8 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 	setSelectedDivisions,
 	clipboard,
 	onCancelCopy,
+	isSimplified,
+	setIsSimplified,
 }) => {
 	const [divisions, setDivisions] = useState<
 		{ code: string; name: string }[]
@@ -81,23 +89,30 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 		}
 	};
 
-	const renderFilterMenu = (triggerClassName: string) => (
+	const renderFilterMenu = (className?: string) => (
 		<Popover>
-			<PopoverTrigger asChild>
-				<Button
-					variant="outline"
-					size="sm"
-					className={triggerClassName}
-				>
-					<Filter className="h-4 w-4 mr-2" />
-					<span>Filter by Division</span>
-					{selectedDivisions.length > 0 && (
-						<span className="ml-1 shrink-0 bg-primary w-5 h-5 rounded-full flex items-center justify-center text-primary-foreground text-xs">
-							{selectedDivisions.length}
-						</span>
-					)}
-				</Button>
-			</PopoverTrigger>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<PopoverTrigger asChild>
+						<Button
+							variant="outline"
+							size="sm"
+							className={className}
+						>
+							<Filter className="h-4 w-4 2xl:mr-2" />
+							<span className="hidden 2xl:inline truncate">
+								Filter by Division
+							</span>
+							{selectedDivisions.length > 0 && (
+								<span className="ml-1 shrink-0 bg-primary w-5 h-5 rounded-full flex items-center justify-center text-primary-foreground text-xs">
+									{selectedDivisions.length}
+								</span>
+							)}
+						</Button>
+					</PopoverTrigger>
+				</TooltipTrigger>
+				<TooltipContent>Filter by Division</TooltipContent>
+			</Tooltip>
 			<PopoverContent className="w-56 p-2" align="start">
 				<div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto">
 					<div className="px-2 py-1.5 text-sm font-semibold">
@@ -137,10 +152,70 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 		</Popover>
 	);
 
+	const renderSettingsMenu = (
+		align: "start" | "end" = "end",
+		className?: string,
+	) => (
+		<Popover>
+			<PopoverTrigger asChild>
+				<Button variant="outline" size="icon" className={className}>
+					<span className="sr-only">Settings</span>
+					<Settings className="h-4 w-4" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-56 p-2" align={align}>
+				<div className="flex flex-col gap-1">
+					<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+						Preferences
+					</div>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="justify-start gap-2"
+						onClick={() => setUseInitials(!useInitials)}
+					>
+						<div className="w-4 flex items-center justify-center shrink-0">
+							{useInitials && <Check className="h-3.5 w-3.5" />}
+						</div>
+						Use Initials
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="justify-start gap-2"
+						onClick={() => setIsSimplified(!isSimplified)}
+					>
+						<div className="w-4 flex items-center justify-center shrink-0">
+							{isSimplified && <Check className="h-3.5 w-3.5" />}
+						</div>
+						Simplify Navigation
+					</Button>
+
+					<div className="h-px bg-border my-1" />
+
+					<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+						Admin
+					</div>
+					<Button
+						asChild
+						variant="ghost"
+						size="sm"
+						className="justify-start gap-2"
+					>
+						<Link href="/resources">
+							<Users className="h-3.5 w-3.5" />
+							Manage Resources
+						</Link>
+					</Button>
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+
 	return (
-		<div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-background text-foreground p-2 sm:p-2 rounded-lg border shadow-sm w-full">
-			{/* Mobile 1st Line / Desktop Left Side */}
-			<div className="flex items-center gap-2 justify-between w-full sm:w-auto">
+		<div className="flex flex-col xl:flex-row items-center justify-between gap-4 bg-background text-foreground p-2 rounded-lg border shadow-sm w-full">
+			{/* Row 1: Left Group (Nav & Title) */}
+			<div className="flex items-center gap-2 justify-between w-full xl:w-auto">
 				<div className="flex items-center bg-muted rounded-lg p-1">
 					<Button
 						variant="ghost"
@@ -164,7 +239,8 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 						<ChevronRight className="h-4 w-4" />
 					</Button>
 				</div>
-				<div className="font-medium text-lg ml-2 whitespace-nowrap hidden sm:block">
+
+				<div className="font-medium text-base sm:text-lg ml-2 whitespace-nowrap text-center sm:text-left flex-1 xl:flex-none truncate">
 					{view === "Day" && startDate.toString("MMMM d, yyyy")}
 					{view === "Week" &&
 						`${startDate.toString("MMMM d")} - ${startDate.addDays(6).toString("MMMM d, yyyy")}`}
@@ -172,92 +248,14 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 					{view === "Year" && startDate.toString("yyyy")}
 				</div>
 
-				{/* Mobile view logic for center date */}
-				<div className="font-medium text-base ml-2 whitespace-nowrap sm:hidden block truncate flex-1 text-center">
-					{view === "Day" && startDate.toString("MMMM d, yyyy")}
-					{view === "Week" &&
-						`${startDate.toString("MMMM d")} - ${startDate.addDays(6).toString("MM d, yyyy")}`}
-					{view === "Month" && startDate.toString("MMMM yyyy")}
-					{view === "Year" && startDate.toString("yyyy")}
+				<div className="xl:hidden flex gap-1">
+					{renderSettingsMenu("end")}
 				</div>
-
-				<Popover>
-					<PopoverTrigger asChild>
-						<Button
-							variant="outline"
-							size="icon"
-							className="ml-2 sm:hidden flex shrink-0"
-						>
-							<span className="sr-only">Settings</span>
-							<Settings className="h-4 w-4" />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className="w-48 p-2" align="start">
-						<div className="flex flex-col gap-1">
-							<Button
-								asChild
-								variant="ghost"
-								size="sm"
-								className="justify-start"
-							>
-								<Link href="/resources">Manage Resources</Link>
-							</Button>
-							<label className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent rounded-md">
-								<input
-									type="checkbox"
-									checked={useInitials}
-									onChange={(e) =>
-										setUseInitials(e.target.checked)
-									}
-									className="rounded border-gray-300"
-								/>
-								Use Initials
-							</label>
-						</div>
-					</PopoverContent>
-				</Popover>
-
-				{/* Desktop Filter */}
-				{resourceType === "PEOPLE" &&
-					renderFilterMenu("hidden sm:flex shrink-0 h-9 ml-2 px-3")}
-
-				{/* Cancel Copy */}
-				{clipboard && (
-					<Button
-						variant="destructive"
-						size="sm"
-						onClick={onCancelCopy}
-						className="hidden sm:flex ml-2 h-9 px-3"
-					>
-						Cancel Copy
-					</Button>
-				)}
 			</div>
 
-			{/* Mobile Filter: shows above type tabs */}
-			{resourceType === "PEOPLE" && (
-				<div className="flex w-full sm:hidden">
-					{renderFilterMenu("flex w-full justify-center h-9")}
-				</div>
-			)}
-
-			{/* Mobile Cancel Copy */}
-			{clipboard && (
-				<div className="flex w-full sm:hidden">
-					<Button
-						variant="destructive"
-						size="sm"
-						onClick={onCancelCopy}
-						className="flex w-full justify-center h-9"
-					>
-						Cancel Copy
-					</Button>
-				</div>
-			)}
-
-			{/* Middle layout for desktop, 2nd line for mobile: Filter Types */}
-			<div className="flex w-full sm:w-auto shrink-0 sm:hidden">
-				<div className="flex items-center justify-center bg-muted rounded-lg p-1 w-full gap-1">
+			{/* Resource Type Center (Responsive) */}
+			{!isSimplified && (
+				<div className="flex items-center bg-muted rounded-lg p-1 w-full xl:w-auto xl:min-w-0 gap-1">
 					{RESOURCE_TYPES.map(({ id, label, icon: Icon }) => (
 						<Tooltip key={id}>
 							<TooltipTrigger asChild>
@@ -269,10 +267,12 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 									}
 									size="sm"
 									onClick={() => setResourceType(id)}
-									className={`flex-1 ${resourceType === id ? "shadow-sm" : ""}`}
+									className={`flex-1 xl:flex-none h-8 px-2 sm:px-3 ${resourceType === id ? "shadow-sm" : ""}`}
 								>
-									<Icon className="h-4 w-4 mr-2" />
-									<span>{label}</span>
+									<Icon className="h-4 w-4 2xl:mr-2" />
+									<span className="hidden 2xl:inline text-xs sm:text-sm">
+										{label}
+									</span>
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent>
@@ -281,117 +281,101 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 						</Tooltip>
 					))}
 				</div>
-			</div>
+			)}
 
-			<div className="hidden sm:flex flex-row items-center justify-center w-full max-w-sm">
-				<div className="flex items-center bg-muted rounded-lg p-1 mr-4 gap-1">
-					{RESOURCE_TYPES.map(({ id, label, icon: Icon }) => (
-						<Tooltip key={id}>
-							<TooltipTrigger asChild>
+			{/* Right Actions & View Selection */}
+			<div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto">
+				{(resourceType === "PEOPLE" ||
+					resourceType === "TIMEOFF" ||
+					clipboard) &&
+					!isSimplified && (
+						<div className="flex items-center gap-2 w-full sm:w-auto">
+							{(resourceType === "PEOPLE" ||
+								resourceType === "TIMEOFF") &&
+								renderFilterMenu(
+									"flex-1 sm:flex-none h-9 px-3",
+								)}
+							{clipboard && (
 								<Button
-									variant={
-										resourceType === id
-											? "default"
-											: "ghost"
-									}
+									variant="destructive"
 									size="sm"
-									onClick={() => setResourceType(id)}
-									className={`h-8 px-3 ${resourceType === id ? "shadow-sm" : ""}`}
+									onClick={onCancelCopy}
+									className="flex-1 sm:flex-none h-9 px-3"
 								>
-									<Icon className="h-4 w-4 mr-2" />
-									<span>{label}</span>
+									Cancel Copy
 								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>{label}</p>
-							</TooltipContent>
-						</Tooltip>
-					))}
-				</div>
-				<Popover>
-					<PopoverTrigger asChild>
-						<Button
-							variant="outline"
-							size="icon"
-							className="shrink-0"
-						>
-							<span className="sr-only">Settings</span>
-							<Settings className="h-4 w-4" />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className="w-48 p-2" align="end">
-						<div className="flex flex-col gap-1">
-							<Button
-								asChild
-								variant="ghost"
-								size="sm"
-								className="justify-start"
-							>
-								<Link href="/resources">Manage Resources</Link>
-							</Button>
-							<label className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent rounded-md">
-								<input
-									type="checkbox"
-									checked={useInitials}
-									onChange={(e) =>
-										setUseInitials(e.target.checked)
-									}
-									className="rounded border-gray-300"
-								/>
-								Use Initials
-							</label>
+							)}
 						</div>
-					</PopoverContent>
-				</Popover>
-			</div>
+					)}
 
-			{/* Views & Export (Right side desktop, 3rd line mobile) */}
-			<div className="flex items-center gap-2 w-full sm:w-auto">
-				<div className="flex items-center justify-center bg-muted rounded-lg p-1 w-full overflow-x-auto">
-					{(["Day", "Week", "Month", "Year"] as const).map((v) => (
-						<Button
-							key={v}
-							variant={view === v ? "default" : "ghost"}
-							size="sm"
-							onClick={() => handleViewChange(v)}
-							className={`flex-1 sm:flex-none ${view === v ? "shadow-sm" : ""}`}
-						>
-							{v}
-						</Button>
-					))}
-				</div>
-				<Popover>
-					<PopoverTrigger asChild>
-						<Button
-							variant="outline"
-							size="icon"
-							className="shrink-0 h-9 w-9"
-						>
-							<span className="sr-only">Export Schedule</span>
-							<Download className="h-4 w-4" />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className="w-40 p-1" align="end">
-						<div className="flex flex-col gap-1">
-							<Button
-								variant="ghost"
-								size="sm"
-								className="justify-start"
-								onClick={() => onExport?.("xlsx")}
-							>
-								Export as XLSX
-							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="justify-start"
-								onClick={() => onExport?.("json")}
-							>
-								Export as JSON
-							</Button>
+				<div className="flex items-center gap-2 w-full sm:w-auto justify-between">
+					{/* View Tabs */}
+					{!isSimplified && (
+						<div className="flex items-center bg-muted rounded-lg p-1 flex-1 sm:flex-none overflow-x-auto">
+							{(["Day", "Week", "Month", "Year"] as const).map(
+								(v) => (
+									<Button
+										key={v}
+										variant={
+											view === v ? "default" : "ghost"
+										}
+										size="sm"
+										onClick={() => handleViewChange(v)}
+										className={`flex-1 sm:flex-none h-8 px-3 ${view === v ? "shadow-sm" : ""}`}
+									>
+										{v}
+									</Button>
+								),
+							)}
 						</div>
-					</PopoverContent>
-				</Popover>
+					)}
+
+					{/* Export & Desktop Settings */}
+					<div className="flex items-center gap-1">
+						{!isSimplified && (
+							<Popover>
+								<PopoverTrigger asChild>
+									<Button
+										variant="outline"
+										size="icon"
+										className="shrink-0 h-9 w-9"
+									>
+										<span className="sr-only">
+											Export Schedule
+										</span>
+										<Download className="h-4 w-4" />
+									</Button>
+								</PopoverTrigger>
+								<PopoverContent
+									className="w-40 p-1"
+									align="end"
+								>
+									<div className="flex flex-col gap-1">
+										<Button
+											variant="ghost"
+											size="sm"
+											className="justify-start"
+											onClick={() => onExport?.("xlsx")}
+										>
+											Export as XLSX
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											className="justify-start"
+											onClick={() => onExport?.("json")}
+										>
+											Export as JSON
+										</Button>
+									</div>
+								</PopoverContent>
+							</Popover>
+						)}
+						<div className="hidden xl:block">
+							{renderSettingsMenu("end")}
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	);

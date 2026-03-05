@@ -31,6 +31,8 @@ export function Sidebar() {
 	const sidebarRef = useRef<HTMLDivElement | null>(null);
 	const pathname = usePathname();
 	const { data: session } = authClient.useSession();
+	// State to control hidden class
+	const [isHidden, setIsHidden] = useState(collapsed);
 
 	function isActive(href: string) {
 		return pathname === href || pathname.startsWith(href + "/");
@@ -90,7 +92,12 @@ export function Sidebar() {
 	const [openMenu, setOpenMenu] = useState<Record<string, boolean>>({});
 
 	const toggleMenu = (href: string) => {
-		setOpenMenu((prev) => ({ ...prev, [href]: !prev[href] }));
+		if (collapsed) {
+			setCollapsed(false);
+			setOpenMenu((prev) => ({ ...prev, [href]: true }));
+		} else {
+			setOpenMenu((prev) => ({ ...prev, [href]: !prev[href] }));
+		}
 	};
 
 	// Auto-expand menu based on URL
@@ -115,6 +122,39 @@ export function Sidebar() {
 		if (menu) traverse(menu);
 		setOpenMenu((prev) => ({ ...prev, ...newOpenState }));
 	}, [pathname, menu]);
+
+	// Handle hidden class for expand/collapse
+	useEffect(() => {
+		const sidebar = sidebarRef.current;
+		if (!sidebar) return;
+
+		// Handler for transition end
+		const handleTransitionEnd = (e: TransitionEvent) => {
+			// Only care about width or transform (for sidebar slide)
+			if (
+				(e.propertyName === "width" ||
+					e.propertyName === "transform") &&
+				collapsed
+			) {
+				setIsHidden(true);
+			}
+		};
+
+		sidebar.addEventListener("transitionend", handleTransitionEnd as any);
+		return () => {
+			sidebar.removeEventListener(
+				"transitionend",
+				handleTransitionEnd as any,
+			);
+		};
+	}, [collapsed]);
+
+	// When expanding, remove hidden immediately
+	useEffect(() => {
+		if (!collapsed) {
+			setIsHidden(false);
+		}
+	}, [collapsed]);
 
 	// Close on mobile
 	useEffect(() => {

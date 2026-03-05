@@ -9,8 +9,15 @@ import { ResourceModal } from "@/components/resources/resource-modal";
 import { DeleteResourceModal } from "@/components/resources/delete-resource-modal";
 import { ResourceCard } from "@/components/resources/resource-card";
 import { ScheduleResource, ResourceType } from "@/components/resources/types";
+import { useRequirePermission } from "@/hooks/use-require-permission";
 
 export default function ResourcesPage() {
+	// Authorization - manage:resources (for actions)
+	const { isAuthorized: canManage } = useRequirePermission(
+		"manage",
+		"resources",
+	);
+
 	const [resources, setResources] = useState<ScheduleResource[]>([]);
 	const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -116,6 +123,10 @@ export default function ResourcesPage() {
 			</div>
 		);
 	};
+
+	if (!canManage) {
+		return null;
+	}
 
 	return (
 		<div className="h-full flex flex-col gap-6">
