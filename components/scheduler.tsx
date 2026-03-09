@@ -14,10 +14,13 @@ import {
 	calculateDayPilotNewDate,
 	formatDayPilotDate,
 	getSchedulerProps,
-	renderPeopleRowHeader,
-	renderTaskRowHeader,
+	handleBeforeEventRender,
+	handleBeforeRowHeaderRender,
+	handleBeforeTimeHeaderRender,
+	handleBeforeCellRender,
 } from "@/lib/daypilot-utils";
 import { ScheduleNavigation } from "@/components/schedule-navigation";
+import { useRequirePermission } from "@/hooks/use-require-permission";
 const Scheduler: React.FC = () => {
 	const [scheduler, setScheduler] = useState<DayPilot.Scheduler>();
 	const wrapperRef = useRef<HTMLDivElement>(null);
@@ -26,6 +29,15 @@ const Scheduler: React.FC = () => {
 	const [events, setEvents] = useState<DayPilot.EventData[]>([]);
 	const [timeOffEvents, setTimeOffEvents] = useState<DayPilot.EventData[]>(
 		[],
+	);
+
+	// const { isAuthorized } = useRequirePermission("read", "schedules");
+
+	// use require permissions
+	const { isAuthorized: canManageSchedule } = useRequirePermission(
+		"manage",
+		"schedules",
+		{ redirect: false },
 	);
 
 	const searchParams = useSearchParams();
@@ -52,6 +64,10 @@ const Scheduler: React.FC = () => {
 
 	const [selectedDivisions, setSelectedDivisions] = useState<string[]>(() =>
 		searchParams.getAll("div"),
+	);
+
+	const [locationCategory, setLocationCategory] = useState<string>(
+		() => searchParams.get("loc") || "ALL",
 	);
 
 	const [refreshKey, setRefreshKey] = useState(0);
@@ -197,10 +213,14 @@ const Scheduler: React.FC = () => {
 	};
 
 	const onEventMoved = async (args: DayPilot.SchedulerEventMovedArgs) => {
-		if (
-			resourceType === "TASK" &&
-			args.e.data.resourceId !== args.newResource
-		) {
+		const isVerticalMove = args.e.data.resourceId !== args.newResource;
+		if (isVerticalMove && !canManageSchedule) {
+			toast.error("You do not have permission to reassign resources");
+			setRefreshKey((prev) => prev + 1);
+			return;
+		}
+
+		if (resourceType === "TASK" && isVerticalMove) {
 			toast.error(
 				"Reassigning resources via drag-and-drop is disabled in Task View.",
 			);
@@ -316,110 +336,22 @@ const Scheduler: React.FC = () => {
 	const onBeforeEventRender = (
 		args: DayPilot.SchedulerBeforeEventRenderArgs,
 	) => {
-		if (!args.data.backColor) {
-			args.data.backColor = "#93c47d";
-		}
-
-		// Inject a custom class that holds the event ID for hover tracking
-		args.data.cssClass = `dp-custom-event-${args.data.id}`;
-
-		const startDP = new DayPilot.Date(args.data.start as string);
-		const endDP = new DayPilot.Date(args.data.end as string);
-		const isAllDay = args.data.tags?.allDay;
-		const formatStr = isAllDay ? "MMM d, yyyy" : "MMM d, yyyy h:mm tt";
-
-		let displayEnd = endDP;
-		if (
-			isAllDay &&
-			startDP.toString("yyyy-MM-dd") !== endDP.toString("yyyy-MM-dd")
-		) {
-			// For allDay events backend adds 1 day to end, so subtract it back for display
-			displayEnd = endDP.addDays(-1);
-		}
-
-		const startDateStr = startDP.toString(formatStr);
-		const endDateStr =
-			isAllDay &&
-			startDP.toString("yyyy-MM-dd") === displayEnd.toString("yyyy-MM-dd")
-				? ""
-				: displayEnd.toString(formatStr);
-
-		const timeStr = endDateStr
-			? `${startDateStr} - ${endDateStr}`
-			: startDateStr;
-
-		// Render the title and date directly into the HTML of the event box
-		args.data.html = `
-			<div class="px-2 py-1 h-full flex flex-col justify-center overflow-hidden">
-				<div class="font-semibold text-sm truncate leading-tight">${args.data.text}</div>
-				<div class="text-[10px] opacity-90 truncate leading-tight mt-0.5">${timeStr}</div>
-			</div>
-		`;
-
-		args.data.toolTip = `${args.data.text} - ${timeStr}`;
-
-		args.data.areas = [
-			{
-				right: 4,
-				top: 4,
-				width: 24,
-				height: 24,
-				cssClass: "copy-btn-area",
-				style: "display: flex; align-items: center; justify-content: center; background: white; border-radius: 4px; cursor: pointer; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);",
-				html: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-600"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
-				visibility: "Hover",
-				action: "None",
-				onClick: (clickArgs: any) => {
-					const e = clickArgs.source;
-					const startDP = new DayPilot.Date(e.data.start as string);
-					const endDP = new DayPilot.Date(e.data.end as string);
-					const durationMs = endDP.getTime() - startDP.getTime();
-					const durationMin = Math.round(durationMs / 60000);
-
-					setClipboard({
-						taskId: e.data.taskId,
-						durationMin,
-						text: e.text(),
-						allDay: e.data.tags?.allDay,
-					});
-					console.log("clipboard", clipboard);
-					toast.success(`Copied task: ${e.text()}`);
-				},
-			},
-		];
+		handleBeforeEventRender(args, resourceType, (data) => {
+			setClipboard(data);
+			toast.success(`Copied task: ${data.text}`);
+		});
 	};
 
 	const onBeforeRowHeaderRender = (
 		args: DayPilot.SchedulerBeforeRowHeaderRenderArgs,
 	) => {
-		if (resourceType === "PEOPLE" || resourceType === "TIMEOFF") {
-			args.row.html = renderPeopleRowHeader(args.row, useInitials);
-		}
-
-		if (resourceType === "TASK") {
-			args.row.html = renderTaskRowHeader(args.row);
-		}
+		handleBeforeRowHeaderRender(args, resourceType, useInitials);
 	};
 
 	const onBeforeTimeHeaderRender = (
 		args: DayPilot.SchedulerBeforeTimeHeaderRenderArgs,
 	) => {
-		const now = new DayPilot.Date();
-		if (view === "Day") {
-			if (
-				args.header.start.getTime() <= now.getTime() &&
-				now.getTime() <
-					(args.header.end?.getTime() ??
-						args.header.start.addHours(1).getTime())
-			) {
-				args.header.backColor = "#e0f2fe"; // Light blue
-			}
-		} else {
-			const today = now.getDatePart();
-			if (args.header.start.getDatePart().getTime() === today.getTime()) {
-				args.header.backColor = "#e0f2fe"; // Light blue
-			}
-		}
+		handleBeforeTimeHeaderRender(args, view);
 	};
 
 	const timeOffMap = useMemo(() => {
@@ -439,42 +371,7 @@ const Scheduler: React.FC = () => {
 	const onBeforeCellRender = (
 		args: DayPilot.SchedulerBeforeCellRenderArgs,
 	) => {
-		const now = new DayPilot.Date();
-
-		// Default background for today
-		if (view === "Day") {
-			if (
-				args.cell.start.getTime() <= now.getTime() &&
-				now.getTime() < args.cell.end.getTime()
-			) {
-				args.cell.properties.backColor = "#f0f9ff"; // Lighter blue
-			}
-		} else {
-			const today = now.getDatePart();
-			if (args.cell.start.getDatePart().getTime() === today.getTime()) {
-				args.cell.properties.backColor = "#f0f9ff"; // Lighter blue
-			}
-		}
-
-		// Highlight time off for PEOPLE resource type
-		if (resourceType === "PEOPLE") {
-			const resourceId = String(args.cell.resource);
-			const cellStart = args.cell.start.getTime();
-			const cellEnd = args.cell.end.getTime();
-
-			const resourceTimeOff = timeOffMap.get(resourceId);
-			if (resourceTimeOff) {
-				const isOnLeave = resourceTimeOff.some((to) => {
-					return to.start < cellEnd && to.end > cellStart;
-				});
-
-				if (isOnLeave) {
-					args.cell.properties.backColor = "#fee2e2"; // Light red (Tailwind red-100)
-					args.cell.properties.html =
-						'<div style="position: absolute; top: 2px; left: 2px; color: #ef4444; font-size: 10px; font-weight: 700;">OFF</div>';
-				}
-			}
-		}
+		handleBeforeCellRender(args, view, resourceType, timeOffMap);
 	};
 
 	const onTimeRangeSelected = async (
@@ -482,9 +379,18 @@ const Scheduler: React.FC = () => {
 	) => {
 		scheduler?.clearSelection();
 
-		const resourceName = resources.find(
-			(r) => r.id === args.resource,
-		)?.name;
+		const selectedResource = resources.find((r) => r.id === args.resource);
+
+		const allowCreate = selectedResource?.tags?.allowCreate;
+
+		if (!allowCreate) {
+			toast.error(
+				"You do not have permission to create tasks for this resource",
+			);
+			return;
+		}
+
+		const resourceName = selectedResource?.name;
 
 		if (clipboard) {
 			setPendingCopyArgs({
@@ -609,6 +515,9 @@ const Scheduler: React.FC = () => {
 				selectedDivisions.forEach((div) =>
 					resourceParams.append("division", div),
 				);
+				if (locationCategory !== "ALL") {
+					resourceParams.append("loc", locationCategory);
+				}
 
 				if (resourceType === "TASK") {
 					resourceParams.append("start", start);
@@ -636,6 +545,7 @@ const Scheduler: React.FC = () => {
 								name: r.name,
 								id: r.id,
 								tags: {
+									userId: r.userId,
 									division: r.user?.profile?.division?.name,
 									divisionCode:
 										r.user?.profile?.division?.code,
@@ -643,6 +553,7 @@ const Scheduler: React.FC = () => {
 										r.user?.profile?.division?.color,
 									position: r.user?.profile?.position,
 									initials: r.user?.profile?.initials,
+									allowCreate: r.allowCreate,
 								},
 							}));
 						}
@@ -659,6 +570,9 @@ const Scheduler: React.FC = () => {
 				selectedDivisions.forEach((div) =>
 					eventParams.append("division", div),
 				);
+				if (locationCategory !== "ALL") {
+					eventParams.append("loc", locationCategory);
+				}
 
 				const resEvents = await fetch(
 					`/api/schedule/events?${eventParams.toString()}`,
@@ -680,6 +594,9 @@ const Scheduler: React.FC = () => {
 					selectedDivisions.forEach((div) =>
 						timeOffParams.append("division", div),
 					);
+					if (locationCategory !== "ALL") {
+						timeOffParams.append("loc", locationCategory);
+					}
 
 					const resTimeOff = await fetch(
 						`/api/schedule/events?${timeOffParams.toString()}`,
@@ -701,7 +618,14 @@ const Scheduler: React.FC = () => {
 		};
 
 		loadData();
-	}, [startDate, view, refreshKey, resourceType, selectedDivisions]);
+	}, [
+		startDate,
+		view,
+		refreshKey,
+		resourceType,
+		selectedDivisions,
+		locationCategory,
+	]);
 
 	useEffect(() => {
 		if (!wrapperRef.current) return;
@@ -745,6 +669,9 @@ const Scheduler: React.FC = () => {
 		params.set("type", resourceType);
 		params.set("date", startDate.toString("yyyy-MM-dd"));
 		selectedDivisions.forEach((div) => params.append("div", div));
+		if (locationCategory !== "ALL") {
+			params.set("loc", locationCategory);
+		}
 
 		const query = params.toString();
 		const url = `${pathname}${query ? `?${query}` : ""}`;
@@ -780,6 +707,8 @@ const Scheduler: React.FC = () => {
 				onCancelCopy={() => setClipboard(null)}
 				isSimplified={isSimplified}
 				setIsSimplified={setIsSimplified}
+				locationCategory={locationCategory}
+				setLocationCategory={setLocationCategory}
 			/>
 
 			<div
@@ -802,7 +731,7 @@ const Scheduler: React.FC = () => {
 						startDate={startDate}
 						days={schedulerProps.days}
 						scale={schedulerProps.scale}
-						eventHeight={80}
+						eventHeight={40}
 						timeHeaders={schedulerProps.timeHeaders}
 						cellWidth={schedulerProps.cellWidth}
 						rowMarginTop={18}
@@ -848,6 +777,7 @@ const Scheduler: React.FC = () => {
 				startAt={quickCreateData?.startAt}
 				endAt={quickCreateData?.endAt}
 				view={view}
+				resourceType={resourceType}
 			/>
 
 			<TimeOffQuickCreateModal

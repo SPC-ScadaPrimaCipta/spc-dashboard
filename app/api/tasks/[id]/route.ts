@@ -8,6 +8,7 @@ import {
 import { TaskUpdateSchema } from "@/lib/task-validators";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
+import { hasPermission } from "@/lib/rbac";
 
 export async function GET(
 	req: Request,
@@ -27,6 +28,7 @@ export async function GET(
 						label: true,
 					},
 				},
+				location: true,
 				resources: {
 					include: {
 						resource: {
@@ -81,21 +83,28 @@ export async function GET(
 		})) as any[];
 		const userMap = new Map(users.map((u) => [u.id, u]));
 
+		const assignee = task.resources
+			.filter((r: any) => r.resource?.resourceType?.code === "PEOPLE")
+			.map((r: any) => ({
+				id: r.resourceId,
+				taskId: task.id,
+				assigneeId: r.resource?.user?.id || r.resourceId,
+				assignee: r.resource?.user || {
+					id: r.resourceId,
+					name: r.resource?.name,
+					email: null,
+					image: null,
+				},
+			}));
+
+		const allowEdit = await hasPermission("manage", "schedules", {
+			bypassOwnership: true,
+			ownerIds: [...assignee.map((a) => a.assigneeId), task.createdById],
+		});
+
 		const enrichedTask = {
 			...task,
-			assignments: task.resources
-				.filter((r: any) => r.resource?.resourceType?.code === "PEOPLE")
-				.map((r: any) => ({
-					id: r.resourceId,
-					taskId: task.id,
-					assigneeId: r.resource?.user?.id || r.resourceId,
-					assignee: r.resource?.user || {
-						id: r.resourceId,
-						name: r.resource?.name,
-						email: null,
-						image: null,
-					},
-				})),
+			assignments: assignee,
 			comments: comments.map((c: any) => ({
 				...c,
 				author:
@@ -109,6 +118,7 @@ export async function GET(
 						({ name: "Unknown", image: null } as any)
 					: null,
 			})),
+			allowEdit: allowEdit,
 		};
 
 		return NextResponse.json({ ok: true, data: enrichedTask });
@@ -270,49 +280,66 @@ export async function PATCH(
 					},
 				});
 
-				// 2. Update Assignees
-				if (assigneesToRemove.length > 0) {
-					await tx.taskAssignment.deleteMany({
-						where: {
-							taskId: id,
-							assigneeId: { in: assigneesToRemove },
-						},
-					});
-					await tx.taskAuditTrail.create({
-						data: {
-							taskId: id,
-							action: "UNASSIGN",
-							byUserId: userId,
-							data: { removedIds: assigneesToRemove },
-							message: "Assignees removed",
-						},
-					});
-				}
-				if (assigneesToAdd.length > 0) {
-					await tx.taskAssignment.createMany({
-						data: assigneesToAdd.map((uid) => ({
-							taskId: id,
-							assigneeId: uid,
-							assignedById: userId,
-						})),
-					});
-					await tx.taskAuditTrail.create({
-						data: {
-							taskId: id,
-							action: "ASSIGN",
-							byUserId: userId,
-							data: { addedIds: assigneesToAdd },
-							message: "Assignees added",
-						},
-					});
+				// 2. Update Assignees & Sync Resources
+				if (body.assigneeIds) {
+					// a. Remove removed assignees and their resource links
+					if (assigneesToRemove.length > 0) {
+						await tx.taskAssignment.deleteMany({
+							where: {
+								taskId: id,
+								assigneeId: { in: assigneesToRemove },
+							},
+						});
 
-					// Keep TaskResource in sync with assignees (auto-create ScheduleResource if missing)
+						// Also remove corresponding taskResource entries
+						await tx.taskResource.deleteMany({
+							where: {
+								taskId: id,
+								resource: {
+									userId: { in: assigneesToRemove },
+									resourceType: { code: "PEOPLE" },
+								},
+							},
+						});
+
+						await tx.taskAuditTrail.create({
+							data: {
+								taskId: id,
+								action: "UNASSIGN",
+								byUserId: userId,
+								data: { removedIds: assigneesToRemove },
+								message: "Assignees removed",
+							},
+						});
+					}
+
+					// b. Add new assignees
+					if (assigneesToAdd.length > 0) {
+						await tx.taskAssignment.createMany({
+							data: assigneesToAdd.map((uid) => ({
+								taskId: id,
+								assigneeId: uid,
+								assignedById: userId,
+							})),
+						});
+						await tx.taskAuditTrail.create({
+							data: {
+								taskId: id,
+								action: "ASSIGN",
+								byUserId: userId,
+								data: { addedIds: assigneesToAdd },
+								message: "Assignees added",
+							},
+						});
+					}
+
+					// c. Sync Resources for ALL current assignees (ensure all assigned people have a taskResource link)
 					const peopleType = await tx.resourceType.findUnique({
 						where: { code: "PEOPLE" },
 					});
 
-					if (peopleType) {
-						for (const uid of assigneesToAdd) {
+					if (peopleType && body.assigneeIds.length > 0) {
+						for (const uid of body.assigneeIds) {
 							let resource = await tx.scheduleResource.findFirst({
 								where: {
 									userId: uid,
@@ -341,24 +368,20 @@ export async function PATCH(
 							}
 
 							if (resource) {
-								const existingLink =
-									await tx.taskResource.findUnique({
-										where: {
-											taskId_resourceId: {
-												taskId: id,
-												resourceId: resource.id,
-											},
-										},
-									});
-								if (!existingLink) {
-									await tx.taskResource.create({
-										data: {
+								await tx.taskResource.upsert({
+									where: {
+										taskId_resourceId: {
 											taskId: id,
 											resourceId: resource.id,
-											assignedById: userId,
 										},
-									});
-								}
+									},
+									update: {},
+									create: {
+										taskId: id,
+										resourceId: resource.id,
+										assignedById: userId,
+									},
+								});
 							}
 						}
 					}

@@ -77,6 +77,7 @@ export function ActivityDetailsModal({
 					t.assignments?.map((a: any) => a.assignee?.id) || [],
 				labelSlugs: t.labels?.map((l: any) => l.label?.slug) || [],
 				isFullDay: t.allDay,
+				locationId: t.locationId,
 			});
 		}
 	}, [activity, fullTask]);

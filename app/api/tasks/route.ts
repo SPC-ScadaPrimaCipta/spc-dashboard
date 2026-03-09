@@ -205,6 +205,7 @@ export async function POST(req: Request) {
 						timezone: body.timezone,
 						color: body.color,
 						code: body.code,
+						locationId: body.locationId,
 						createdById: userId,
 					},
 				});

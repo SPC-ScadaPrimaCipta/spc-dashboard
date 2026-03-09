@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { getUserRolesAndPermissions } from "./rbac";
 
 export async function requireUserId(): Promise<string> {
 	const session = await auth.api.getSession({
@@ -96,4 +97,42 @@ export function buildAuditDiff(
 	}
 
 	return hasChanges ? diff : null;
+}
+
+type PermissionOptions = {
+	bypassOwnership?: boolean;
+	ownerIds?: (string | null | undefined)[];
+};
+
+export async function hasScopedPermission(
+	action: string,
+	resource: string,
+	options?: PermissionOptions,
+) {
+	const session = await auth.api.getSession({
+		headers: await headers(),
+	});
+
+	if (!session) return false;
+
+	const userId = session.user.id;
+	const { roles, permissions } = await getUserRolesAndPermissions(userId);
+
+	// Superadmin bypass
+	if (roles.includes("superadmin") || permissions.includes("manage:all")) {
+		return true;
+	}
+
+	// Bypass based on explicit owner IDs
+	if (options?.bypassOwnership && options.ownerIds) {
+		if (options.ownerIds.includes(userId)) {
+			return true;
+		}
+	}
+
+	const requiredPermission = `${action}:${resource}`;
+	if (!permissions.includes(requiredPermission)) {
+		return false;
+	}
+	return false;
 }

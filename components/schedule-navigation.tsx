@@ -52,6 +52,8 @@ interface ScheduleNavigationProps {
 	onCancelCopy?: () => void;
 	isSimplified: boolean;
 	setIsSimplified: (v: boolean) => void;
+	locationCategory: string;
+	setLocationCategory: (v: string) => void;
 }
 
 export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
@@ -70,6 +72,8 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 	onCancelCopy,
 	isSimplified,
 	setIsSimplified,
+	locationCategory,
+	setLocationCategory,
 }) => {
 	const [divisions, setDivisions] = useState<
 		{ code: string; name: string }[]
@@ -77,6 +81,7 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 	const { isAuthorized: canManageResources } = useRequirePermission(
 		"manage",
 		"resources",
+		{ redirect: false },
 	);
 
 	useEffect(() => {
@@ -108,17 +113,19 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 						>
 							<Filter className="h-4 w-4" />
 							<span className="truncate inline xl:hidden">
-								Filter by Division
+								Filter
 							</span>
-							{selectedDivisions.length > 0 && (
+							{(selectedDivisions.length > 0 ||
+								locationCategory !== "ALL") && (
 								<span className="ml-1 shrink-0 bg-primary w-5 h-5 rounded-full flex items-center justify-center text-primary-foreground text-xs">
-									{selectedDivisions.length}
+									{selectedDivisions.length +
+										(locationCategory !== "ALL" ? 1 : 0)}
 								</span>
 							)}
 						</Button>
 					</PopoverTrigger>
 				</TooltipTrigger>
-				<TooltipContent>Filter by Division</TooltipContent>
+				<TooltipContent>Filter</TooltipContent>
 			</Tooltip>
 			<PopoverContent className="w-56 p-2" align="start">
 				<div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto">
@@ -152,6 +159,31 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 								)}
 							</div>
 							{d.name}
+						</Button>
+					))}
+
+					<div className="h-px bg-border my-1" />
+					<div className="px-2 py-1.5 text-sm font-semibold">
+						Location Category
+					</div>
+					{(["ALL", "OFFICE", "NON_OFFICE"] as const).map((cat) => (
+						<Button
+							key={cat}
+							variant="ghost"
+							size="sm"
+							className="justify-start gap-2"
+							onClick={() => setLocationCategory(cat)}
+						>
+							<div className="w-4 flex items-center">
+								{locationCategory === cat && (
+									<Check className="h-3 w-3" />
+								)}
+							</div>
+							{cat === "ALL"
+								? "All Locations"
+								: cat === "OFFICE"
+									? "Office"
+									: "Non-Office"}
 						</Button>
 					))}
 				</div>
