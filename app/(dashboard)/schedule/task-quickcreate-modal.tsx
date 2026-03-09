@@ -20,6 +20,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ColorPicker, COLORS } from "@/components/color-picker";
+import { UserSearchMultiSelect } from "@/components/user-search-multiselect";
+import { LocationSearchSelect } from "@/components/location-search-select";
+import { MapPin } from "lucide-react";
 
 // Global counter for rotating color
 let nextColorIndex = 0;
@@ -29,6 +32,8 @@ const quickCreateSchema = z.object({
 	title: z.string().min(1, "Title is required"),
 	description: z.string().optional(),
 	code: z.string().optional().nullable(),
+	assigneeIds: z.array(z.string()).optional(),
+	locationId: z.string().uuid().optional(),
 });
 
 type QuickCreateFormValues = z.infer<typeof quickCreateSchema>;
@@ -42,6 +47,7 @@ interface TaskQuickCreateModalProps {
 	startAt?: string; // ISO string from DayPilot
 	endAt?: string; // ISO string from DayPilot
 	view?: string; // To conditionally display time and end date
+	resourceType?: string;
 }
 
 export function TaskQuickCreateModal({
@@ -53,6 +59,7 @@ export function TaskQuickCreateModal({
 	startAt,
 	endAt,
 	view,
+	resourceType,
 }: TaskQuickCreateModalProps) {
 	const [statusId, setStatusId] = useState<string>("");
 	const [color, setColor] = useState<string>(COLORS[0].value);
@@ -71,10 +78,13 @@ export function TaskQuickCreateModal({
 			title: "",
 			description: "",
 			code: "",
+			assigneeIds: [],
+			locationId: undefined,
 		},
 	});
 
 	const watchedTitle = watch("title");
+	const watchAssigneeIds = watch("assigneeIds");
 
 	useEffect(() => {
 		if (isOpen && watchedTitle && !dirtyFields.code) {
@@ -152,6 +162,21 @@ export function TaskQuickCreateModal({
 
 			if (!response.ok || !result.ok) {
 				throw new Error(result.error || "Failed to create task");
+			}
+
+			// If we are in VEHICLE view and people are assigned, trigger a PATCH
+			// to ensure the sync logic in the [id] route (assignments -> resources) is executed.
+			if (
+				resourceType === "VEHICLE" &&
+				data.assigneeIds &&
+				data.assigneeIds.length > 0
+			) {
+				const taskId = result.data.id;
+				await fetch(`/api/tasks/${taskId}`, {
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ assigneeIds: data.assigneeIds }),
+				});
 			}
 
 			toast.success("Task quickly created");
@@ -246,6 +271,17 @@ export function TaskQuickCreateModal({
 					</div>
 
 					<div className="space-y-2">
+						<Label className="flex items-center gap-2">
+							<MapPin className="h-4 w-4" /> Location
+						</Label>
+						<LocationSearchSelect
+							selectedId={watch("locationId")}
+							onChange={(id) => setValue("locationId", id)}
+							placeholder="Select location..."
+						/>
+					</div>
+
+					<div className="space-y-2">
 						<Label htmlFor="code">Code</Label>
 						<Input
 							id="code"
@@ -256,6 +292,16 @@ export function TaskQuickCreateModal({
 							Auto-generated from title, but editable
 						</p>
 					</div>
+					{resourceType === "VEHICLE" && (
+						<div className="space-y-2">
+							<Label>Person</Label>
+							<UserSearchMultiSelect
+								selectedIds={watchAssigneeIds || []}
+								onChange={(ids) => setValue("assigneeIds", ids)}
+								placeholder="Assign to..."
+							/>
+						</div>
+					)}
 
 					<div className="space-y-2">
 						<Label>Color</Label>

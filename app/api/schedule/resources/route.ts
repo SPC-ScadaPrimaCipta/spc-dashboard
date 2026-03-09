@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireUserId, handleApiError } from "@/lib/task-utils";
 import { z } from "zod";
+import { hasPermission } from "@/lib/rbac";
 
 export async function GET(req: Request) {
 	try {
@@ -15,6 +16,7 @@ export async function GET(req: Request) {
 		const divisions = divisionParams
 			.flatMap((d) => d.split(","))
 			.filter(Boolean);
+		const locationCategory = searchParams.get("loc");
 
 		if (resourceTypeCode === "TASK") {
 			const startParam = searchParams.get("start");
@@ -25,6 +27,12 @@ export async function GET(req: Request) {
 			const taskWhere: any = {
 				status: { isActive: true },
 			};
+
+			if (locationCategory) {
+				taskWhere.location = {
+					category: locationCategory,
+				};
+			}
 
 			if (startDate && endDate) {
 				taskWhere.AND = [
@@ -96,6 +104,7 @@ export async function GET(req: Request) {
 						profile: {
 							select: {
 								position: true,
+								initials: true,
 								division: {
 									select: {
 										name: true,
@@ -127,7 +136,22 @@ export async function GET(req: Request) {
 			});
 		}
 
-		return NextResponse.json({ ok: true, data: sortedResources });
+		const data = await Promise.all(
+			sortedResources.map(async (resource) => {
+				const allowCreate =
+					resourceTypeCode === "PEOPLE" ||
+					resourceTypeCode === "TIMEOFF"
+						? await hasPermission("manage", "schedules", {
+								bypassOwnership: true,
+								ownerIds: [resource.userId],
+							})
+						: true;
+
+				return { ...resource, allowCreate };
+			}),
+		);
+
+		return NextResponse.json({ ok: true, data });
 	} catch (error) {
 		return handleApiError(error);
 	}

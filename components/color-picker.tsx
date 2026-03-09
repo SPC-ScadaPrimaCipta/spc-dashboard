@@ -11,8 +11,8 @@ export const COLORS = [
 	{ name: "Pink", value: "#ec4899" },
 	{ name: "Orange", value: "#f97316" },
 	{ name: "Gray", value: "#6b7280" },
-	{ name: "Slate", value: "#71717a" },
-	{ name: "Zinc", value: "#18181b" },
+	// { name: "Slate", value: "#71717a" },
+	// { name: "Zinc", value: "#18181b" },
 ];
 
 interface ColorPickerProps {

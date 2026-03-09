@@ -13,6 +13,7 @@ import {
 	Activity,
 	Layers,
 	Loader2,
+	MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import { UserSearchMultiSelect } from "@/components/user-search-multiselect";
 import { LabelMultiSelect } from "@/components/label-multi-select";
 import { Badge } from "@/components/ui/badge";
 import { DateTimePicker } from "@/components/date-time-picker";
+import { LocationSearchSelect } from "@/components/location-search-select";
 
 const COLORS = [
 	{ name: "Blue", value: "#3b82f6" },
@@ -365,6 +367,23 @@ export function TaskEditContent({
 								})
 							}
 							placeholder="Add labels..."
+						/>
+					</section>
+
+					{/* Location Section */}
+					<section className="space-y-3">
+						<h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+							<MapPin className="h-4 w-4" /> Location
+						</h4>
+						<LocationSearchSelect
+							selectedId={formData.locationId}
+							onChange={(id) =>
+								setFormData({
+									...formData,
+									locationId: id,
+								})
+							}
+							placeholder="Select location..."
 						/>
 					</section>
 

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 export function useRequirePermission(
 	action: string | string[],
 	resource: string,
-	options: { redirect?: boolean } = { redirect: true }
+	options: { redirect?: boolean } = { redirect: true },
 ) {
 	const { data: session, isPending, error } = authClient.useSession();
 	const router = useRouter();
@@ -41,7 +41,7 @@ export function useRequirePermission(
 			const requiredActions = Array.isArray(action) ? action : [action];
 			// Check if user has ANY of the required permissions
 			hasPermission = requiredActions.some((act) =>
-				permissions.includes(`${act}:${resource}`)
+				permissions.includes(`${act}:${resource}`),
 			);
 		}
 

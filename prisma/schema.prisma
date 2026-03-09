@@ -111,7 +111,7 @@ model Permission {
 }
 
 model workflow {
-  id                String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                String              @id @default(uuid()) @db.Uuid
   code              String              @db.VarChar(100)
   name              String              @db.VarChar(255)
   version           Int
@@ -128,7 +128,7 @@ model workflow {
 }
 
 model workflow_action_log {
-  id                      String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                      String            @id @default(uuid()) @db.Uuid
   workflow_instance_id    String            @db.Uuid
   action                  workflow_action
   from_step_id            String?           @db.Uuid
@@ -145,7 +145,7 @@ model workflow_action_log {
 }
 
 model workflow_instance {
-  id                     String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                     String                   @id @default(uuid()) @db.Uuid
   workflow_id            String                   @db.Uuid
   workflow_version       Int
   ref_type               String                   @db.VarChar(100)
@@ -164,7 +164,7 @@ model workflow_instance {
 }
 
 model workflow_step {
-  id                        String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                        String                   @id @default(uuid()) @db.Uuid
   workflow_id               String                   @db.Uuid
   step_key                  String                   @db.VarChar(50)
   step_order                Int
@@ -187,7 +187,7 @@ model workflow_step {
 }
 
 model workflow_step_instance {
-  id                   String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                   String               @id @default(uuid()) @db.Uuid
   workflow_instance_id String               @db.Uuid
   step_id              String               @db.Uuid
   status               workflow_step_status @default(PENDING)
@@ -362,6 +362,9 @@ model Task {
 
   resources TaskResource[]
 
+  locationId String? @db.Uuid
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
   // Auditable columns
   createdAt   DateTime      @default(now())
   createdById String?
@@ -468,7 +471,7 @@ model TaskAssignment {
 }
 
 model ResourceType {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
   code        String   @unique @db.VarChar(50) // PERSON, VEHICLE, ROOM, etc (stable)
   name        String   @db.VarChar(100)        // display name
   description String?
@@ -486,7 +489,7 @@ model ResourceType {
 }
 
 model ScheduleResource {
-  id             String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id             String       @id @default(uuid()) @db.Uuid
 
   resourceTypeId String       @db.Uuid
   resourceType   ResourceType @relation(fields: [resourceTypeId], references: [id])
@@ -529,7 +532,7 @@ model TaskResource {
 }
 
 model Division {
-  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id        String   @id @default(uuid()) @db.Uuid
   code      String?  @unique @db.VarChar(50)
   name      String   @db.VarChar(150)
 
@@ -631,4 +634,29 @@ model TimeOffRequest {
   @@index([resourceId, startAt, endAt])
   @@index([status, startAt])
   @@index([typeId])
+}
+
+enum LocationCategory {
+  OFFICE
+  NON_OFFICE
+}
+
+model Location {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(150)
+  description String?
+
+  category    LocationCategory
+
+  address     String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tasks       Task[]
+
+  @@index([category, isActive])
 }

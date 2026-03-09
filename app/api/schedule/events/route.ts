@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireUserId, handleApiError } from "@/lib/task-utils";
+import {
+	requireUserId,
+	handleApiError,
+	hasScopedPermission,
+} from "@/lib/task-utils";
+import { hasPermission } from "@/lib/rbac";
+import { headers } from "next/headers";
 
 export async function GET(req: Request) {
 	try {
-		await requireUserId();
+		const userId = await requireUserId();
 		const { searchParams } = new URL(req.url);
 
 		const startParam = searchParams.get("start");
@@ -14,6 +20,7 @@ export async function GET(req: Request) {
 		const divisions = divisionParams
 			.flatMap((d) => d.split(","))
 			.filter(Boolean);
+		const locationCategory = searchParams.get("loc");
 
 		const startDate = startParam ? new Date(startParam) : null;
 		const endDate = endParam ? new Date(endParam) : null;
@@ -23,10 +30,18 @@ export async function GET(req: Request) {
 			!isNaN(startDate.getTime()) &&
 			!isNaN(endDate.getTime());
 
+		const canChangeResource = await hasPermission("manage", "schedules");
+
 		if (resourceTypeCode === "TASK") {
 			const taskWhere: any = {
 				status: { isActive: true },
 			};
+
+			if (locationCategory) {
+				taskWhere.location = {
+					category: locationCategory,
+				};
+			}
 
 			if (isValidRange) {
 				taskWhere.AND = [
@@ -45,6 +60,11 @@ export async function GET(req: Request) {
 							resource: {
 								include: {
 									resourceType: true,
+									user: {
+										include: {
+											profile: true,
+										},
+									},
 								},
 							},
 						},
@@ -60,7 +80,24 @@ export async function GET(req: Request) {
 					(tr) => tr.resource.resourceType.code === "PEOPLE",
 				);
 
+				// Collect all resource types for this task
+				const allResourceTypes = task.resources.map(
+					(tr) => tr.resource.resourceType.code,
+				);
+
 				peopleResources.forEach((tr) => {
+					// Get initials from profile or calculate from name
+					let initials = tr.resource.user?.profile?.initials;
+					if (!initials && tr.resource.name) {
+						initials = tr.resource.name
+							.split(" ")
+							.filter(Boolean)
+							.map((n: string) => n.charAt(0))
+							.join("")
+							.toUpperCase()
+							.substring(0, 3);
+					}
+
 					events.push({
 						id: `${task.id}_${tr.resourceId}`,
 						taskId: task.id,
@@ -77,6 +114,9 @@ export async function GET(req: Request) {
 							allDay: task.allDay,
 							type: "TASK_ASSIGNMENT",
 							resourceId: tr.resourceId,
+							resourceTypes: allResourceTypes,
+							initials: initials,
+							allowEdit: task.createdById === userId,
 						},
 					});
 				});
@@ -143,6 +183,15 @@ export async function GET(req: Request) {
 			},
 		};
 
+		if (locationCategory) {
+			where.task = {
+				...where.task,
+				location: {
+					category: locationCategory,
+				},
+			};
+		}
+
 		if (resourceTypeCode) {
 			where.resource = {
 				resourceType: {
@@ -177,29 +226,81 @@ export async function GET(req: Request) {
 		const taskResources = await prisma.taskResource.findMany({
 			where,
 			include: {
-				task: true,
+				task: {
+					include: {
+						resources: {
+							include: {
+								resource: {
+									include: {
+										resourceType: true,
+										user: {
+											include: {
+												profile: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 				resource: true,
 			},
 		});
 
-		const events = taskResources.map((tr) => {
-			return {
-				id: `${tr.taskId}_${tr.resourceId}`,
-				taskId: tr.taskId,
-				resourceId: tr.resourceId,
-				text: tr.task.title,
-				start: tr.task.startAt ? tr.task.startAt.toISOString() : "",
-				end: tr.task.endAt ? tr.task.endAt.toISOString() : "",
-				resource: tr.resourceId,
-				backColor: tr.task.color || tr.resource.color || "#3d85c6",
-				fontColor: "#fff",
-				bubbleHtml: `<strong>${tr.task.title}</strong>`,
-				tags: {
-					allDay: tr.task.allDay,
-					type: "TASK",
-				},
-			};
-		});
+		const events = await Promise.all(
+			taskResources.map(async (tr) => {
+				const initialsList = tr.task.resources
+					.filter((r) => r.resource.resourceType.code === "PEOPLE")
+					.map((r) => {
+						if (r.resource.user?.profile?.initials) {
+							return r.resource.user.profile.initials;
+						}
+						return r.resource.name
+							.split(" ")
+							.filter(Boolean)
+							.map((n: string) => n.charAt(0))
+							.join("")
+							.toUpperCase()
+							.substring(0, 3);
+					});
+
+				const allResourceTypes = tr.task.resources.map(
+					(r) => r.resource.resourceType.code,
+				);
+
+				const assigneeUserId = tr.task.resources
+					.filter((r) => r.resource.resourceType.code === "PEOPLE")
+					.map((r) => r.resource.userId);
+
+				const allowEdit = await hasPermission("manage", "schedules", {
+					bypassOwnership: true,
+					ownerIds: [tr.task.createdById, ...assigneeUserId],
+				});
+
+				return {
+					id: `${tr.taskId}_${tr.resourceId}`,
+					taskId: tr.taskId,
+					resourceId: tr.resourceId,
+					text: tr.task.title,
+					start: tr.task.startAt ? tr.task.startAt.toISOString() : "",
+					end: tr.task.endAt ? tr.task.endAt.toISOString() : "",
+					resource: tr.resourceId,
+					backColor: tr.task.color || tr.resource.color || "#3d85c6",
+					fontColor: "#fff",
+					bubbleHtml: `<strong>${tr.task.title}</strong>`,
+					moveDisabled: !allowEdit,
+					resizeDisabled: !allowEdit,
+					tags: {
+						allDay: tr.task.allDay,
+						type: "TASK",
+						resourceTypes: allResourceTypes,
+						initials: initialsList.join(", "),
+						allowEdit: allowEdit,
+					},
+				};
+			}),
+		);
 
 		return NextResponse.json({ ok: true, data: events });
 	} catch (error) {

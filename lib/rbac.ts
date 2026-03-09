@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 
-async function getUserRolesAndPermissions(userId: string) {
+export async function getUserRolesAndPermissions(userId: string) {
 	const user = await prisma.user.findUnique({
 		where: { id: userId },
 		include: {
@@ -26,12 +26,24 @@ async function getUserRolesAndPermissions(userId: string) {
 	return { roles, permissions: Array.from(permissions) };
 }
 
-export async function hasPermission(action: string, resource: string) {
+type PermissionOptions = {
+	bypassOwnership?: boolean;
+	ownerIds?: (string | null | undefined)[];
+};
+
+export async function hasPermission(
+	action: string,
+	resource: string,
+	options?: PermissionOptions,
+) {
 	const session = await auth.api.getSession({
 		headers: await headers(),
 	});
 
 	if (!session) return false;
+
+	const userId = session.user.id;
+	// console.log("userid", userId);
 
 	const { roles, permissions } = await getUserRolesAndPermissions(
 		session.user.id,
@@ -43,6 +55,14 @@ export async function hasPermission(action: string, resource: string) {
 	}
 
 	const requiredPermission = `${action}:${resource}`;
+
+	// Bypass based on explicit owner IDs
+	if (options?.bypassOwnership && options.ownerIds) {
+		// console.log("ownerId", options.ownerIds);
+		if (options.ownerIds.includes(userId)) {
+			return true;
+		}
+	}
 
 	return (
 		permissions.includes(requiredPermission) ||

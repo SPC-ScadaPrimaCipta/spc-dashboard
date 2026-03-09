@@ -15,6 +15,7 @@ import {
 	Server,
 	ChartBarIncreasing,
 	ColumnsSettings,
+	MapPin,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -95,6 +96,12 @@ export const rawMenu: MenuItem[] = [
 				name: "Time Off Types",
 				href: "/master-data/timeoff-types",
 				icon: Calendar,
+				permissions: [{ resource: "masterdata", action: "manage" }],
+			},
+			{
+				name: "Locations",
+				href: "/master-data/locations",
+				icon: MapPin,
 				permissions: [{ resource: "masterdata", action: "manage" }],
 			},
 		],
