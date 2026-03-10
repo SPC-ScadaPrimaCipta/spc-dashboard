@@ -30,11 +30,13 @@ services:
         container_name: spc-dashboard-db
         restart: unless-stopped
         # Use port 5433
-        command: ["postgres", "-p", "5433"]    
+        command: ["postgres", "-p", "5433"]
         environment:
             POSTGRES_USER: ${POSTGRES_USER:-user}
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
             POSTGRES_DB: ${POSTGRES_DB:-db_name}
+        expose:
+            - "5433"
         ports:
             - "5433:5433"
         volumes:

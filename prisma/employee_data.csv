@@ -1,0 +1,50 @@
+Employee ID,Full Name,Organization,Job Position,Initials,Email
+101005,Joko Waluyo,BOD,M & R Director,JW,joko.waluyo@scada.co.id
+101001,Budi Rahardja,BOD,Specialist Project Director,BR,budi.rahardja@scada.co.id
+101003,Yogie Kusumah Nugraha,BOD,HRGA-HSE Director,YKN,yogie.kusumah@scada.co.id
+101002,Muchamad Iman Karmawijaya,BOD,ICT Director,MIK,muchamad.iman@scada.co.id
+101006,Jerry Agung Sevianto,BOD,Bussiness Development & Marketing Director,JAS,jerry.agung@scada.co.id
+101004,Muhamad Yusuf Amin,BOD,Automation Director,MYA,yusuf.amin@scada.co.id
+101007,Muhammad Arif Ihsan,BOD,President director,MAI,arif.ihsan@scada.co.id
+101008,Agus Solehudin Muslim,BOD,Finance & Administration Manager,ASM,agus.muslim@scada.co.id
+106001,Muhammad Syafri,BOD,M & R Engineer Lead,MS,syafri@scada.co.id
+106002,Fuady Ramdhani,BOD,Automation Engineer Lead,FR,fuad@scada.co.id
+110001,Gitandra Wiradini,AUTO,Automation Sr Engineer,GW,gitandra.wiradini@scada.co.id
+416001,Mochamad Aldho Rizky,AUTO,Automation Jr Engineer,MAR,aldo.rizky@scada.co.id
+119001,Akbar Sopian,AUTO,Automation Jr Engineer,AS,akbar.sopian@scada.co.id
+121002,Hirzan Kautsar Dimasyqi,AUTO,Automation Jr Engineer,HKD,hirzan.kautsar@scada.co.id
+121003,Varian Andika Wijayakusuma,AUTO,Automation Jr Engineer,VAW,varian.andika@scada.co.id
+121004,Rifqi Helmi Alvinda,AUTO,Automation Jr Engineer,RHA,rifqi.helmi@scada.co.id
+121005,Ricky Evan Anugrah Firdaus,AUTO,Automation Jr Engineer,REAF,ricky.evan@scada.co.id
+122001,Akmal Abdillah,AUTO,Data Analyst,AA,akmal.abdillah@scada.co.id
+122003,Irfan Afandi,AUTO,Technician & Drafter,IA,irfan.afandi@scada.co.id
+122005,Watsabbit Ala Hudalloh,AUTO,Automation Jr Engineer,WAH,watsabbit.hudalloh@scada.co.id
+123002,Reza Prasandika,AUTO,Automation Jr Engineer,RP,reza.prasandika@scada.co.id
+125002,Hudzaifi Fuad Ibrahim,AUTO,Automation Jr Engineer,HFI,Hudzaifi.Fuad@scada.co.id
+1225007,Nizar Abdul Mathin,AUTO,Automation Jr Engineer,NAM,Nizar.Mathin@scada.co.id
+225011,Muhammad Fajri,AUTO,Technician & Drafter,MF,Muhammad.Fajri@scada.co.id
+125009,Muhammad Ridho Ardiansyah,AUTO,Automation Jr Engineer,MRA,Ridho.Ardiansyah@scada.co.id
+125012,Aksho Rama Kuswara,AUTO,Automation Jr Engineer,ARK,Aksho.Kuswara@scada.co.id
+125013,Saeful Surya Dilaga,AUTO,Automation Jr Engineer,SSD,Saeful.Dilaga@scada.co.id
+113001,Dani Sulistio,BDM,Design Grafis Staff,DS,dani.sulistio@scada.co.id
+416002,Nenden Annisa,FINANCE,Finance Staff,NA,nenden.annisa@scada.co.id
+424003,Desika Isrohana,FINANCE,Accounting & Tax Staff,DI,Desika.Isrohana@scada.co.id
+425008,Dina Inayati Fadhilah,FINANCE,Project Support Officer,DIF,Dina.Fadhilah@scada.co.id
+509001,Yogi Ferianto,HRGA-HSE,HRGA Staff,YF,yogi.ferianto@scada.id
+512001,Aminadi,HRGA-HSE,Security,A,aminadi@scada.id
+520003,Manan Kelanajaya,HRGA-HSE,Security,MK,manan.kelanajaya@scada.id
+522001,Margarette Geulis Marlena,HRGA-HSE,HRGA - HSE Supervisor,MGM,margarette.marlena@scada.co.id
+523003,Dedi Damhudi,HRGA-HSE,Security,DD,dedi.damhudi@scada.id
+524001,Laela Majidah,HRGA-HSE,HRGA Staff,LM,Laela.Majidah@scada.co.id
+219002,Rival Dwi Reksy Purnomo,ICT,Software Jr Engineer,RDR,rival.dwi@scada.co.id
+220002,Nurchafidz Febrian Rizqi,ICT,Software Jr Engineer,NFR,nurchafidz.febrian@scada.co.id
+223001,Maratus Sholihah,ICT,Software Jr Engineer,MS,maratus.sholihah@scada.co.id
+223004,Muhammad Fajar Yusuf Firdaus,ICT,Software Jr Engineer,MFY,fajar.yusuf@scada.co.id
+224004,Muhammad Naufal Wicaksono,ICT,Software Jr Engineer,MNW,Naufal.Wicaksono@scada.co.id
+225001,Refano Pradana Yogatama,ICT,Software Jr Engineer,RPY,Refano.Pradana@scada.co.id
+225003,Muhammad Hanif Atthariq,ICT,Software Jr Engineer,MHA,Hanif.Atthariq@scada.co.id
+225014,Nazar Nur Fauzan,ICT,Software Jr Engineer,NNF,Nazar.Fauzan@scada.co.id
+320001,Ramdani,MNR,M & R Jr Engineer,R,ramdani@scada.co.id
+424005,Muhammad Nabil Khoirulrahman,MNR,M & R Jr Engineer,MNK,Nabil.Khoirulrahman@scada.co.id
+425015,Nizar Ubaid,MNR,M & R Jr Engineer,NU,Nizar.Ubaid@scada.co.id
+426001,Muhammad Oktarian Akbar,MNR,M & R Jr Engineer,MOA,Oktarian.Akbar@scada.co.id
