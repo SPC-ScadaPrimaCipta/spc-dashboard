@@ -200,7 +200,10 @@ export async function GET(req: Request) {
 			};
 		}
 
-		if (divisions.length > 0) {
+		if (
+			divisions.length > 0 &&
+			!["ROOM", "VEHICLE"].includes(resourceTypeCode || "")
+		) {
 			where.resource = {
 				...where.resource,
 				user: {

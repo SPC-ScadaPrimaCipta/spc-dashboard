@@ -69,38 +69,46 @@ export default function LoginPage() {
 				</CardHeader>
 
 				<CardContent className="space-y-4">
-					<div className="space-y-1">
-						<Label>Email</Label>
-						<Input
-							type="email"
-							placeholder="you@example.com"
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
-							disabled={loading}
-						/>
-					</div>
-
-					<div className="space-y-1">
-						<Label>Password</Label>
-						<PasswordInput
-							placeholder="••••••••"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							disabled={loading}
-						/>
-					</div>
-
-					{error && (
-						<div className="text-sm text-red-600">{error}</div>
-					)}
-
-					<Button
-						className="w-full"
-						onClick={handleLogin}
-						disabled={loading}
+					<form
+						onSubmit={(e) => {
+							e.preventDefault();
+							handleLogin();
+						}}
+						className="space-y-4"
 					>
-						{loading ? "Signing in..." : "Login"}
-					</Button>
+						<div className="space-y-1">
+							<Label>Email</Label>
+							<Input
+								type="email"
+								placeholder="you@example.com"
+								value={email}
+								onChange={(e) => setEmail(e.target.value)}
+								disabled={loading}
+							/>
+						</div>
+
+						<div className="space-y-1">
+							<Label>Password</Label>
+							<PasswordInput
+								placeholder="••••••••"
+								value={password}
+								onChange={(e) => setPassword(e.target.value)}
+								disabled={loading}
+							/>
+						</div>
+
+						{error && (
+							<div className="text-sm text-red-600">{error}</div>
+						)}
+
+						<Button
+							type="submit"
+							className="w-full"
+							disabled={loading}
+						>
+							{loading ? "Signing in..." : "Login"}
+						</Button>
+					</form>
 
 					{/* Divider */}
 					<div className="relative flex items-center">
@@ -113,6 +121,7 @@ export default function LoginPage() {
 
 					{/* Microsoft Login Button */}
 					<Button
+						type="button"
 						variant="outline"
 						className="w-full flex items-center justify-center gap-2"
 						onClick={handleMicrosoftLogin}

@@ -84,6 +84,7 @@ const Scheduler: React.FC = () => {
 		durationMin: number;
 		text: string;
 		allDay?: boolean;
+		originalStartAt?: string;
 	} | null>(null);
 
 	const [isConfirmCopyOpen, setIsConfirmCopyOpen] = useState(false);
@@ -419,6 +420,15 @@ const Scheduler: React.FC = () => {
 	const handleConfirmCopy = async () => {
 		if (!clipboard || !pendingCopyArgs) return;
 
+		let finalStartAt = pendingCopyArgs.startAt;
+		if (!clipboard.allDay && clipboard.originalStartAt) {
+			const timePart = clipboard.originalStartAt.split("T")[1];
+			if (timePart) {
+				const datePart = pendingCopyArgs.startAt.split("T")[0];
+				finalStartAt = `${datePart}T${timePart}`;
+			}
+		}
+
 		setIsLoading(true);
 		try {
 			const res = await fetch(
@@ -427,7 +437,7 @@ const Scheduler: React.FC = () => {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
-						startAt: pendingCopyArgs.startAt,
+						startAt: finalStartAt,
 						targetResourceId: pendingCopyArgs.targetResourceId,
 						resourceMode: "REPLACE",
 						durationMin: clipboard.durationMin,
@@ -495,6 +505,7 @@ const Scheduler: React.FC = () => {
 			durationMin,
 			text: taskEntity.title,
 			allDay: taskEntity.allDay || taskEntity.isFullDay,
+			originalStartAt: startDate as string,
 		});
 		toast.success(`Copied task: ${taskEntity.title}`);
 	};

@@ -14,6 +14,7 @@ import {
 	Layers,
 	Loader2,
 	MapPin,
+	Hash,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -77,17 +78,19 @@ export function TaskEditContent({
 				<div className="flex items-start justify-between gap-4 pr-6">
 					<div className="space-y-3 flex-1">
 						<div className="space-y-3">
-							<Input
-								value={formData.title}
-								onChange={(e) =>
-									setFormData({
-										...formData,
-										title: e.target.value,
-									})
-								}
-								className="text-lg font-semibold h-10"
-								placeholder="Task Title"
-							/>
+							<div className="flex items-center gap-2">
+								<Input
+									value={formData.title}
+									onChange={(e) =>
+										setFormData({
+											...formData,
+											title: e.target.value,
+										})
+									}
+									className="text-lg font-semibold h-10 flex-1"
+									placeholder="Task Title"
+								/>
+							</div>
 							<div className="flex items-center gap-2">
 								<Select
 									value={formData.statusId}
@@ -190,6 +193,24 @@ export function TaskEditContent({
 			{/* Body */}
 			<div className="flex-1 overflow-y-auto min-h-0 relative">
 				<div className="p-6 space-y-8">
+					{/* Code Section */}
+					<section className="space-y-3">
+						<h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+							<Hash className="h-4 w-4" /> Code
+						</h4>
+						<Input
+							value={formData.code || ""}
+							onChange={(e) =>
+								setFormData({
+									...formData,
+									code: e.target.value,
+								})
+							}
+							className="text-sm font-mono max-w-[300px]"
+							placeholder="Task code..."
+						/>
+					</section>
+
 					{/* Schedule Section */}
 					<section className="space-y-3">
 						<div className="flex items-center justify-between">
