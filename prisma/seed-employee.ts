@@ -54,7 +54,7 @@ async function main() {
 		const orgCode = columns[2].trim();
 		const position = columns[3].trim();
 		const initials = columns[4].trim();
-		const email = columns[5].trim();
+		const email = columns[5].trim().toLowerCase();
 
 		console.log(`Processing employee ${email}...`);
 
@@ -79,12 +79,19 @@ async function main() {
 					`Failed to create user ${email} via better-auth:`,
 					error,
 				);
-				continue;
+				// Don't continue here. If it already exists, we want to try fetching it again.
 			}
 
 			user = await prisma.user.findUnique({
 				where: { email },
 			});
+
+			// Fallback: try case-insensitive lookup
+			if (!user) {
+				user = await prisma.user.findFirst({
+					where: { email: { equals: email, mode: "insensitive" } },
+				});
+			}
 		} else {
 			console.log(`User ${email} already exists.`);
 		}
