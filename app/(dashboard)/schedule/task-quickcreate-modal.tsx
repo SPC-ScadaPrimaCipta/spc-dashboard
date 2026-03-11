@@ -33,7 +33,10 @@ const quickCreateSchema = z.object({
 	description: z.string().optional(),
 	code: z.string().optional().nullable(),
 	assigneeIds: z.array(z.string()).optional(),
-	locationId: z.string().uuid().optional(),
+	locationId: z
+		.string()
+		.min(1, "Location is required")
+		.uuid("Invalid location format"),
 });
 
 type QuickCreateFormValues = z.infer<typeof quickCreateSchema>;
@@ -79,7 +82,7 @@ export function TaskQuickCreateModal({
 			description: "",
 			code: "",
 			assigneeIds: [],
-			locationId: undefined,
+			locationId: undefined as any,
 		},
 	});
 
@@ -272,13 +275,22 @@ export function TaskQuickCreateModal({
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-2">
-							<MapPin className="h-4 w-4" /> Location
+							<MapPin className="h-4 w-4" /> Location *
 						</Label>
 						<LocationSearchSelect
 							selectedId={watch("locationId")}
-							onChange={(id) => setValue("locationId", id)}
+							onChange={(id) =>
+								setValue("locationId", id ?? "", {
+									shouldValidate: true,
+								})
+							}
 							placeholder="Select location..."
 						/>
+						{errors.locationId && (
+							<p className="text-xs text-red-500">
+								{errors.locationId.message}
+							</p>
+						)}
 					</div>
 
 					<div className="space-y-2">

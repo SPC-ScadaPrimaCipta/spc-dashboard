@@ -99,7 +99,10 @@ export async function GET(
 
 		const allowEdit = await hasPermission("manage", "schedules", {
 			bypassOwnership: true,
-			ownerIds: [...assignee.map((a) => a.assigneeId), task.createdById],
+			ownerIds: [
+				...assignee.map((a: { assigneeId: string }) => a.assigneeId),
+				task.createdById,
+			],
 		});
 
 		const enrichedTask = {

@@ -17,6 +17,7 @@ import {
 	Layers,
 	Copy,
 	MapPin,
+	Hash,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DialogTitle } from "@/components/ui/dialog";
@@ -132,6 +133,20 @@ export function TaskViewContent({
 			{/* Body */}
 			<div className="flex-1 overflow-y-auto min-h-0 relative">
 				<div className="p-6 space-y-8">
+					{/* Code Section */}
+					{task.code && (
+						<section className="space-y-3">
+							<h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+								<Hash className="h-4 w-4" /> Code
+							</h4>
+							<div className="bg-muted/30 p-3 rounded-lg border border-border w-fit min-w-[200px]">
+								<span className="font-mono text-sm">
+									{task.code}
+								</span>
+							</div>
+						</section>
+					)}
+
 					{/* Schedule Section */}
 					<section className="space-y-3">
 						<h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">

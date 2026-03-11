@@ -169,6 +169,7 @@ export const handleBeforeEventRender = (
 		durationMin: number;
 		text: string;
 		allDay?: boolean;
+		originalStartAt?: string;
 	}) => void,
 ) => {
 	if (!args.data.backColor) {
@@ -245,6 +246,7 @@ export const handleBeforeEventRender = (
 			visibility: "Hover",
 			action: "None",
 			onClick: (clickArgs: any) => {
+				clickArgs.preventDefault();
 				const e = clickArgs.source;
 				const sDP = new DayPilot.Date(e.data.start as string);
 				const eDP = new DayPilot.Date(e.data.end as string);
@@ -257,6 +259,7 @@ export const handleBeforeEventRender = (
 						durationMin,
 						text: e.text(),
 						allDay: e.data.tags?.allDay,
+						originalStartAt: e.data.start as string,
 					});
 				}
 			},

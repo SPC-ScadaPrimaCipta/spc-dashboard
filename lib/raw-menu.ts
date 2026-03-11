@@ -16,6 +16,8 @@ import {
 	ChartBarIncreasing,
 	ColumnsSettings,
 	MapPin,
+	CalendarCog,
+	CalendarHeart,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -95,13 +97,19 @@ export const rawMenu: MenuItem[] = [
 			{
 				name: "Time Off Types",
 				href: "/master-data/timeoff-types",
-				icon: Calendar,
+				icon: CalendarCog,
 				permissions: [{ resource: "masterdata", action: "manage" }],
 			},
 			{
 				name: "Locations",
 				href: "/master-data/locations",
 				icon: MapPin,
+				permissions: [{ resource: "masterdata", action: "manage" }],
+			},
+			{
+				name: "Holidays",
+				href: "/master-data/holidays",
+				icon: CalendarHeart,
 				permissions: [{ resource: "masterdata", action: "manage" }],
 			},
 		],

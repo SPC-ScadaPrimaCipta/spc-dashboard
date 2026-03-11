@@ -78,6 +78,7 @@ export function ActivityDetailsModal({
 				labelSlugs: t.labels?.map((l: any) => l.label?.slug) || [],
 				isFullDay: t.allDay,
 				locationId: t.locationId,
+				code: t.code || "",
 			});
 		}
 	}, [activity, fullTask]);
