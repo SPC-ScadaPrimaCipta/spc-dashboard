@@ -138,7 +138,6 @@ export async function PATCH(
 		const userId = await requireUserId();
 		const { id } = await params;
 		const json = await req.json();
-		const body = TaskUpdateSchema.parse(json);
 
 		const oldTask = await prisma.task.findUnique({
 			where: { id },
@@ -154,6 +153,15 @@ export async function PATCH(
 				{ status: 404 },
 			);
 		}
+
+		if (json.endDate < json.startDate) {
+			return NextResponse.json(
+				{ ok: false, error: "End date cannot be before start date" },
+				{ status: 400 },
+			);
+		}
+
+		const body = TaskUpdateSchema.parse(json);
 
 		// --- Labels Logic ---
 		let labelsToCreate: string[] = [];
@@ -228,7 +236,7 @@ export async function PATCH(
 		// Remove relation fields from scalar updates
 		delete updates.assigneeIds;
 		delete updates.labelSlugs;
-		delete updates.resourceId;
+		delete updates.replaceResourceId;
 
 		// Recalculate duration/endAt if time fields change
 		const mergedStart =
@@ -409,17 +417,65 @@ export async function PATCH(
 					});
 				}
 
-				// 3b. Update Resource
-				if (body.resourceId) {
+				// 3b. Replace specific Resource (Drag and drop)
+				if (body.replaceResourceId) {
+					const { oldId, newId } = body.replaceResourceId;
+
 					await tx.taskResource.deleteMany({
-						where: { taskId: id },
+						where: { taskId: id, resourceId: oldId },
 					});
-					await tx.taskResource.create({
-						data: {
+
+					await tx.taskResource.upsert({
+						where: {
+							taskId_resourceId: {
+								taskId: id,
+								resourceId: newId,
+							},
+						},
+						update: {},
+						create: {
 							taskId: id,
-							resourceId: body.resourceId,
+							resourceId: newId,
+							assignedById: userId,
 						},
 					});
+
+					// If the resources are PEOPLE, sync taskAssignment
+					const oldResource = await tx.scheduleResource.findUnique({
+						where: { id: oldId },
+						select: { userId: true },
+					});
+					const newResource = await tx.scheduleResource.findUnique({
+						where: { id: newId },
+						select: { userId: true },
+					});
+
+					if (oldResource?.userId) {
+						await tx.taskAssignment.deleteMany({
+							where: {
+								taskId: id,
+								assigneeId: oldResource.userId,
+							},
+						});
+					}
+					if (newResource?.userId) {
+						const existingAssignment =
+							await tx.taskAssignment.findFirst({
+								where: {
+									taskId: id,
+									assigneeId: newResource.userId,
+								},
+							});
+						if (!existingAssignment) {
+							await tx.taskAssignment.create({
+								data: {
+									taskId: id,
+									assigneeId: newResource.userId,
+									assignedById: userId,
+								},
+							});
+						}
+					}
 				}
 				// Log label changes as part of general update or separate?
 				// "comment create/label changes... create TaskAuditTrail row"

@@ -30,8 +30,6 @@ export async function GET(req: Request) {
 			!isNaN(startDate.getTime()) &&
 			!isNaN(endDate.getTime());
 
-		const canChangeResource = await hasPermission("manage", "schedules");
-
 		if (resourceTypeCode === "TASK") {
 			const taskWhere: any = {
 				status: { isActive: true },
@@ -251,6 +249,11 @@ export async function GET(req: Request) {
 			},
 		});
 
+		// Search Current User their Resource ID
+		const userResourceId = taskResources.find(
+			(tr) => tr.resource.userId === userId,
+		)?.resourceId;
+
 		const events = await Promise.all(
 			taskResources.map(async (tr) => {
 				const initialsList = tr.task.resources
@@ -292,7 +295,7 @@ export async function GET(req: Request) {
 					backColor: tr.task.color || tr.resource.color || "#3d85c6",
 					fontColor: "#fff",
 					bubbleHtml: `<strong>${tr.task.title}</strong>`,
-					moveDisabled: !allowEdit,
+					moveDisabled: tr.resourceId !== userResourceId,
 					resizeDisabled: !allowEdit,
 					tags: {
 						allDay: tr.task.allDay,

@@ -146,7 +146,7 @@ export const getSchedulerProps = (
 				{ groupBy: "Month" },
 				{ groupBy: "Day", format: "d" },
 			];
-			cellWidth = 55;
+			cellWidth = 52;
 			break;
 		case "Year":
 			days = startDate.daysInYear();

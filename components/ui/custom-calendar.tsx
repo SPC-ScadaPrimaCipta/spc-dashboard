@@ -28,6 +28,8 @@ export type CalendarProps = {
 	selected?: Date;
 	onSelect?: (date: Date | undefined) => void;
 	className?: string;
+	minDate?: Date;
+	maxDate?: Date;
 };
 
 export function CustomCalendar({
@@ -35,6 +37,8 @@ export function CustomCalendar({
 	selected,
 	onSelect,
 	className,
+	minDate,
+	maxDate,
 }: CalendarProps) {
 	let today = startOfToday();
 	let [currentMonth, setCurrentMonth] = React.useState(
@@ -94,7 +98,20 @@ export function CustomCalendar({
 				<div>Sa</div>
 			</div>
 			<div className="mt-2 grid grid-cols-7 text-sm">
-				{days.map((day, dayIdx) => (
+				{days.map((day, dayIdx) => {
+					let isDisabled = false;
+					if (minDate) {
+						const min = new Date(minDate);
+						min.setHours(0, 0, 0, 0);
+						if (day < min) isDisabled = true;
+					}
+					if (maxDate) {
+						const max = new Date(maxDate);
+						max.setHours(23, 59, 59, 999);
+						if (day > max) isDisabled = true;
+					}
+
+					return (
 					<div
 						key={day.toString()}
 						className={cn(
@@ -104,8 +121,10 @@ export function CustomCalendar({
 					>
 						<button
 							type="button"
+							disabled={isDisabled}
 							onClick={() => onSelect?.(day)}
 							className={cn(
+								isDisabled && "opacity-30 cursor-not-allowed",
 								isSameDay(day, selected || new Date(0)) &&
 									"text-white",
 								!isSameDay(day, selected || new Date(0)) &&
@@ -126,6 +145,7 @@ export function CustomCalendar({
 									!isToday(day) &&
 									"bg-gray-900 dark:bg-gray-100 dark:text-gray-900",
 								!isSameDay(day, selected || new Date(0)) &&
+									!isDisabled &&
 									"hover:bg-gray-200 dark:hover:bg-gray-800",
 								(isSameDay(day, selected || new Date(0)) ||
 									isToday(day)) &&
@@ -138,7 +158,7 @@ export function CustomCalendar({
 							</time>
 						</button>
 					</div>
-				))}
+				)})}
 			</div>
 		</div>
 	);
