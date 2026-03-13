@@ -284,8 +284,26 @@ export const handleBeforeRowHeaderRender = (
 export const handleBeforeTimeHeaderRender = (
 	args: DayPilot.SchedulerBeforeTimeHeaderRenderArgs,
 	view: string,
+	holidays: any[],
 ) => {
 	const now = new DayPilot.Date();
+	
+	let isHeaderHoliday = false;
+	const headerStart = args.header.start.getTime();
+	const headerEnd = args.header.end?.getTime() ?? args.header.start.addDays(1).getTime();
+	const isDayLengthOrLess = (headerEnd - headerStart) <= 24 * 60 * 60 * 1000;
+
+	if (isDayLengthOrLess && holidays?.length) {
+		isHeaderHoliday = holidays.some((holiday) => {
+			const hStart = new DayPilot.Date(holiday.startAt).getTime();
+			const hEnd = new DayPilot.Date(holiday.endAt || holiday.startAt).getTime();
+			return hStart < headerEnd && hEnd > headerStart;
+		});
+	}
+
+	const dayOfWeek = args.header.start.getDayOfWeek();
+	const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
 	if (view === "Day") {
 		if (
 			args.header.start.getTime() <= now.getTime() &&
@@ -301,6 +319,11 @@ export const handleBeforeTimeHeaderRender = (
 			args.header.backColor = "#e0f2fe"; // Light blue
 		}
 	}
+
+	if (isHeaderHoliday && !isWeekend && isDayLengthOrLess) {
+		const content = (args.header as any).text || args.header.html || args.header.start.toString("d");
+		args.header.html = `<span style="color: #ef4444; font-weight: bold;">${content}</span>`;
+	}
 };
 
 export const handleBeforeCellRender = (
@@ -308,6 +331,7 @@ export const handleBeforeCellRender = (
 	view: string,
 	resourceType: string,
 	timeOffMap: Map<string, { start: number; end: number }[]>,
+	holidays: any[],
 ) => {
 	const now = new DayPilot.Date();
 
@@ -324,6 +348,23 @@ export const handleBeforeCellRender = (
 		if (args.cell.start.getDatePart().getTime() === today.getTime()) {
 			args.cell.properties.backColor = "#f0f9ff"; // Lighter blue
 		}
+	}
+
+	// Check if this cell is inside a holiday
+	const cellStart = args.cell.start.getTime();
+	const cellEnd = args.cell.end.getTime();
+
+	const isHoliday = holidays.some((holiday) => {
+		const hStart = new DayPilot.Date(holiday.startAt).getTime();
+		const hEnd = new DayPilot.Date(holiday.endAt || holiday.startAt).getTime();
+		return hStart < cellEnd && hEnd > cellStart;
+	});
+
+	const dayOfWeek = args.cell.start.getDayOfWeek();
+	const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+	if (isHoliday && !isWeekend) {
+		args.cell.properties.backColor = "#fee2e2"; // Light red out like today but red
 	}
 
 	// Highlight time off for PEOPLE resource type

@@ -30,6 +30,7 @@ const Scheduler: React.FC = () => {
 	const [timeOffEvents, setTimeOffEvents] = useState<DayPilot.EventData[]>(
 		[],
 	);
+	const [holidays, setHolidays] = useState<any[]>([]);
 
 	// const { isAuthorized } = useRequirePermission("read", "schedules");
 
@@ -360,7 +361,7 @@ const Scheduler: React.FC = () => {
 	const onBeforeTimeHeaderRender = (
 		args: DayPilot.SchedulerBeforeTimeHeaderRenderArgs,
 	) => {
-		handleBeforeTimeHeaderRender(args, view);
+		handleBeforeTimeHeaderRender(args, view, holidays);
 	};
 
 	const timeOffMap = useMemo(() => {
@@ -380,7 +381,7 @@ const Scheduler: React.FC = () => {
 	const onBeforeCellRender = (
 		args: DayPilot.SchedulerBeforeCellRenderArgs,
 	) => {
-		handleBeforeCellRender(args, view, resourceType, timeOffMap);
+		handleBeforeCellRender(args, view, resourceType, timeOffMap, holidays);
 	};
 
 	const onTimeRangeSelected = async (
@@ -628,6 +629,16 @@ const Scheduler: React.FC = () => {
 					}
 				} else {
 					setTimeOffEvents([]);
+				}
+
+				// 4. Fetch holidays spanning the current view
+				const year = new Date(start).getFullYear();
+				const resHolidays = await fetch(`/api/holidays?year=${year}`);
+				if (resHolidays.ok) {
+					const jsonHolidays = await resHolidays.json();
+					if (jsonHolidays.ok) {
+						setHolidays(jsonHolidays.data);
+					}
 				}
 			} catch (error) {
 				console.error("Failed to fetch schedule data", error);
