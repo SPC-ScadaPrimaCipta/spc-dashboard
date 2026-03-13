@@ -276,17 +276,26 @@ export function TaskEditContent({
 												)
 											: undefined
 									}
-									setDate={(date) =>
+									setDate={(date) => {
+										let newEndAt = formData.endAt;
+										if (date && formData.startAt && formData.endAt) {
+											const oldStart = new Date(String(formData.startAt).replace("Z", ""));
+											const oldEnd = new Date(String(formData.endAt).replace("Z", ""));
+											const duration = oldEnd.getTime() - oldStart.getTime();
+											const currentEnd = new Date(String(formData.endAt).replace("Z", ""));
+											if (date > currentEnd || date.getTime() > currentEnd.getTime() - 60000) {
+												const shiftedEnd = new Date(date.getTime() + (duration > 0 ? duration : 3600000));
+												newEndAt = format(shiftedEnd, "yyyy-MM-dd'T'HH:mm:ss.000'Z'");
+											}
+										}
 										setFormData({
 											...formData,
 											startAt: date
-												? format(
-														date,
-														"yyyy-MM-dd'T'HH:mm:ss.000'Z'",
-													)
+												? format(date, "yyyy-MM-dd'T'HH:mm:ss.000'Z'")
 												: undefined,
-										})
-									}
+											endAt: newEndAt,
+										});
+									}}
 									includeTime={!formData.isFullDay}
 									className="h-8 text-sm"
 								/>
@@ -316,6 +325,15 @@ export function TaskEditContent({
 												: undefined,
 										})
 									}
+									minDate={
+										formData.startAt
+											? new Date(
+													String(
+														formData.startAt,
+													).replace("Z", ""),
+												)
+											: undefined
+									}
 									includeTime={!formData.isFullDay}
 									className="h-8 text-sm"
 								/>
@@ -335,6 +353,13 @@ export function TaskEditContent({
 									...formData,
 									assigneeIds: ids,
 								})
+							}
+							initialOptions={
+								formData.assignees?.map((a: any) => ({
+									value: a.id,
+									label: a.name || "Unknown",
+									description: a.email || "-",
+								})) || []
 							}
 							placeholder="Add people..."
 						/>

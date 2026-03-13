@@ -57,12 +57,12 @@ export const rawMenu: MenuItem[] = [
 		icon: Server,
 		permissions: [{ resource: "resources", action: "read" }],
 	},
-	{
-		name: "Proposals",
-		href: "/proposals",
-		icon: FileText,
-		permissions: [{ resource: "proposals", action: "read" }],
-	},
+	// {
+	// 	name: "Proposals",
+	// 	href: "/proposals",
+	// 	icon: FileText,
+	// 	permissions: [{ resource: "proposals", action: "read" }],
+	// },
 	{
 		name: "Admin",
 		href: "/admin",

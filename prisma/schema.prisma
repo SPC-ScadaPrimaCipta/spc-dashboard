@@ -660,3 +660,48 @@ model Location {
 
   @@index([category, isActive])
 }
+
+model Holiday {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String?  @unique @db.VarChar(50)
+  name        String   @db.VarChar(150)
+  description String?
+
+  startAt     DateTime
+  endAt       DateTime
+  allDay      Boolean  @default(true)
+  timezone    String?
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  scopes      HolidayScope[]
+
+  @@index([startAt, endAt])
+  @@index([isActive])
+}
+
+enum HolidayScopeType {
+  GLOBAL
+  LOCATION
+  DIVISION
+  RESOURCE_TYPE
+}
+
+model HolidayScope {
+  id        String           @id @default(uuid()) @db.Uuid
+  holidayId String           @db.Uuid
+  holiday   Holiday          @relation(fields: [holidayId], references: [id], onDelete: Cascade)
+
+  scopeType HolidayScopeType
+  scopeId   String?          // locationId, divisionId, resourceTypeId; null for GLOBAL
+
+  createdAt DateTime         @default(now())
+
+  @@index([holidayId])
+  @@index([scopeType, scopeId])
+}

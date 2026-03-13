@@ -138,12 +138,12 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 						className="justify-start gap-2"
 						onClick={() => setSelectedDivisions([])}
 					>
-						<div className="w-4 flex items-center">
+						<div className="w-4 flex items-center shrink-0">
 							{selectedDivisions.length === 0 && (
 								<Check className="h-3 w-3" />
 							)}
 						</div>
-						All Divisions
+						<span className="truncate text-left">All Divisions</span>
 					</Button>
 					{divisions.map((d) => (
 						<Button
@@ -153,12 +153,12 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 							className="justify-start gap-2"
 							onClick={() => d.code && toggleDivision(d.code)}
 						>
-							<div className="w-4 flex items-center">
+							<div className="w-4 flex items-center shrink-0">
 								{selectedDivisions.includes(d.code!) && (
 									<Check className="h-3 w-3" />
 								)}
 							</div>
-							{d.name}
+							<span className="truncate text-left">{d.name}</span>
 						</Button>
 					))}
 
@@ -174,16 +174,18 @@ export const ScheduleNavigation: React.FC<ScheduleNavigationProps> = ({
 							className="justify-start gap-2"
 							onClick={() => setLocationCategory(cat)}
 						>
-							<div className="w-4 flex items-center">
+							<div className="w-4 flex items-center shrink-0">
 								{locationCategory === cat && (
 									<Check className="h-3 w-3" />
 								)}
 							</div>
-							{cat === "ALL"
-								? "All Locations"
-								: cat === "OFFICE"
-									? "Office"
-									: "Non-Office"}
+							<span className="truncate text-left">
+								{cat === "ALL"
+									? "All Locations"
+									: cat === "OFFICE"
+										? "Office"
+										: "Non-Office"}
+							</span>
 						</Button>
 					))}
 				</div>

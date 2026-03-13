@@ -30,6 +30,7 @@ const Scheduler: React.FC = () => {
 	const [timeOffEvents, setTimeOffEvents] = useState<DayPilot.EventData[]>(
 		[],
 	);
+	const [holidays, setHolidays] = useState<any[]>([]);
 
 	// const { isAuthorized } = useRequirePermission("read", "schedules");
 
@@ -243,7 +244,17 @@ const Scheduler: React.FC = () => {
 				args.e.end(),
 				"end",
 			);
-			const resourceId = args.newResource;
+			const payload: any = { startAt, endAt };
+			if (isVerticalMove) {
+				if (eventType === "TIMEOFF") {
+					payload.resourceId = args.newResource;
+				} else {
+					payload.replaceResourceId = {
+						oldId: String(args.e.data.resourceId || args.e.resource()),
+						newId: String(args.newResource)
+					};
+				}
+			}
 
 			const apiUrl =
 				eventType === "TIMEOFF"
@@ -255,11 +266,7 @@ const Scheduler: React.FC = () => {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({
-					startAt,
-					endAt,
-					resourceId,
-				}),
+				body: JSON.stringify(payload),
 			});
 
 			if (!res.ok) {
@@ -271,6 +278,7 @@ const Scheduler: React.FC = () => {
 				toast.success(
 					`${eventType === "TIMEOFF" ? "Time off" : "Task"} updated successfully`,
 				);
+				setRefreshKey((prev) => prev + 1); // Refresh to update linked events
 			}
 		} catch (error) {
 			console.error("Error updating event", error);
@@ -326,6 +334,7 @@ const Scheduler: React.FC = () => {
 				toast.success(
 					`${eventType === "TIMEOFF" ? "Time off" : "Task"} updated successfully`,
 				);
+				setRefreshKey((prev) => prev + 1); // Refresh to update linked events
 			}
 		} catch (error) {
 			console.error("Error updating event", error);
@@ -352,7 +361,7 @@ const Scheduler: React.FC = () => {
 	const onBeforeTimeHeaderRender = (
 		args: DayPilot.SchedulerBeforeTimeHeaderRenderArgs,
 	) => {
-		handleBeforeTimeHeaderRender(args, view);
+		handleBeforeTimeHeaderRender(args, view, holidays);
 	};
 
 	const timeOffMap = useMemo(() => {
@@ -372,7 +381,7 @@ const Scheduler: React.FC = () => {
 	const onBeforeCellRender = (
 		args: DayPilot.SchedulerBeforeCellRenderArgs,
 	) => {
-		handleBeforeCellRender(args, view, resourceType, timeOffMap);
+		handleBeforeCellRender(args, view, resourceType, timeOffMap, holidays);
 	};
 
 	const onTimeRangeSelected = async (
@@ -621,6 +630,16 @@ const Scheduler: React.FC = () => {
 				} else {
 					setTimeOffEvents([]);
 				}
+
+				// 4. Fetch holidays spanning the current view
+				const year = new Date(start).getFullYear();
+				const resHolidays = await fetch(`/api/holidays?year=${year}`);
+				if (resHolidays.ok) {
+					const jsonHolidays = await resHolidays.json();
+					if (jsonHolidays.ok) {
+						setHolidays(jsonHolidays.data);
+					}
+				}
 			} catch (error) {
 				console.error("Failed to fetch schedule data", error);
 			} finally {
@@ -742,7 +761,7 @@ const Scheduler: React.FC = () => {
 						startDate={startDate}
 						days={schedulerProps.days}
 						scale={schedulerProps.scale}
-						eventHeight={40}
+						eventHeight={50}
 						timeHeaders={schedulerProps.timeHeaders}
 						cellWidth={schedulerProps.cellWidth}
 						rowMarginTop={18}

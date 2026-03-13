@@ -20,6 +20,7 @@ interface UserSearchMultiSelectProps {
 	placeholder?: string;
 	single?: boolean;
 	source?: "USERS" | "RESOURCES";
+	initialOptions?: Option[];
 }
 
 export interface Option {
@@ -34,11 +35,29 @@ export function UserSearchMultiSelect({
 	placeholder,
 	single = false,
 	source = "USERS",
+	initialOptions = [],
 }: UserSearchMultiSelectProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 	const [options, setOptions] = useState<Option[]>([]);
 	const [loading, setLoading] = useState(false);
+	const [optionCache, setOptionCache] = useState<Record<string, Option>>({});
+
+	useEffect(() => {
+		if (initialOptions && initialOptions.length > 0) {
+			setOptionCache((prev) => {
+				const next = { ...prev };
+				let changed = false;
+				initialOptions.forEach((o) => {
+					if (!next[o.value]) {
+						next[o.value] = o;
+						changed = true;
+					}
+				});
+				return changed ? next : prev;
+			});
+		}
+	}, [initialOptions]);
 
 	const selectedValues = useMemo(() => {
 		return selectedIds;
@@ -65,23 +84,28 @@ export function UserSearchMultiSelect({
 				const json = await res.json();
 
 				if (json.ok && Array.isArray(json.data)) {
+					let newOptions: Option[] = [];
 					if (source === "RESOURCES") {
-						setOptions(
-							json.data.map((r: any) => ({
-								value: r.id,
-								label: r.name,
-								description: r.user?.email || "-",
-							})),
-						);
+						newOptions = json.data.map((r: any) => ({
+							value: r.id,
+							label: r.name,
+							description: r.user?.email || "-",
+						}));
 					} else {
-						setOptions(
-							json.data.map((u: any) => ({
-								value: u.id,
-								label: u.name,
-								description: u.email || "-",
-							})),
-						);
+						newOptions = json.data.map((u: any) => ({
+							value: u.id,
+							label: u.name,
+							description: u.email || "-",
+						}));
 					}
+					setOptions(newOptions);
+					setOptionCache((prev) => {
+						const next = { ...prev };
+						newOptions.forEach((o) => {
+							next[o.value] = o;
+						});
+						return next;
+					});
 				} else {
 					setOptions([]);
 				}
@@ -154,11 +178,11 @@ export function UserSearchMultiSelect({
 						)}
 						{selectedValues.length > 0 && (
 							<div className="flex flex-wrap gap-1">
-								{selectedValues.slice(0, 3).map((val) => {
+								{selectedValues.map((val) => {
 									// Try to find label in options, or fallback to val
 									const opt = options.find(
 										(o) => o.value === val,
-									);
+									) || optionCache[val];
 									// Fallback UI if not found in current options
 									return (
 										<Badge
@@ -178,11 +202,6 @@ export function UserSearchMultiSelect({
 										</Badge>
 									);
 								})}
-								{selectedValues.length > 3 && (
-									<Badge variant="secondary">
-										+{selectedValues.length - 3} more
-									</Badge>
-								)}
 							</div>
 						)}
 					</div>

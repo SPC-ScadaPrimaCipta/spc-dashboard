@@ -75,7 +75,12 @@ export const TaskUpdateSchema = z
 		color: z.string().optional().nullable(),
 		assigneeIds: z.array(z.string()).optional(),
 		labelSlugs: z.array(z.string()).optional(),
-		resourceId: z.string().optional(),
+		replaceResourceId: z
+			.object({
+				oldId: z.string(),
+				newId: z.string(),
+			})
+			.optional(),
 		locationId: z.string().uuid().optional().nullable(),
 		code: z.string().optional().nullable(),
 	})

@@ -127,6 +127,8 @@ export default function TaskDetailPage() {
 					color: t.color || "#3b82f6",
 					assigneeIds:
 						t.assignments?.map((a: any) => a.assignee?.id) || [],
+					assignees:
+						t.assignments?.map((a: any) => a.assignee) || [],
 					labelSlugs: t.labels?.map((l: any) => l.label?.slug) || [],
 					isFullDay:
 						(t.startAt || t.startDate) &&
@@ -899,13 +901,24 @@ export default function TaskDetailPage() {
 															)
 														: undefined
 												}
-												setDate={(date) =>
+												setDate={(date) => {
+													let newEndAt = formData.endAt;
+													if (date && formData.startAt && formData.endAt) {
+														const oldStart = new Date(formData.startAt);
+														const oldEnd = new Date(formData.endAt);
+														const duration = oldEnd.getTime() - oldStart.getTime();
+														const currentEnd = new Date(formData.endAt);
+														if (date > currentEnd || date.getTime() > currentEnd.getTime() - 60000) {
+															const shiftedEnd = new Date(date.getTime() + (duration > 0 ? duration : 3600000));
+															newEndAt = shiftedEnd.toISOString();
+														}
+													}
 													setFormData({
 														...formData,
-														startAt:
-															date?.toISOString(),
-													})
-												}
+														startAt: date?.toISOString(),
+														endAt: newEndAt,
+													});
+												}}
 												includeTime={
 													!formData.isFullDay
 												}
@@ -945,6 +958,13 @@ export default function TaskDetailPage() {
 														endAt: date?.toISOString(),
 													})
 												}
+												minDate={
+													formData.startAt
+														? new Date(
+																formData.startAt,
+														  )
+														: undefined
+												}
 												includeTime={
 													!formData.isFullDay
 												}
@@ -979,16 +999,25 @@ export default function TaskDetailPage() {
 						</CardHeader>
 						<CardContent>
 							{isEditing ? (
-								<UserSearchMultiSelect
-									selectedIds={formData.assigneeIds || []}
-									onChange={(ids) =>
-										setFormData({
-											...formData,
-											assigneeIds: ids,
-										})
-									}
-									placeholder="Add assignments..."
-								/>
+									<UserSearchMultiSelect
+										selectedIds={formData.assigneeIds || []}
+										onChange={(ids) =>
+											setFormData({
+												...formData,
+												assigneeIds: ids,
+											})
+										}
+										initialOptions={
+											formData.assignees?.map(
+												(a: any) => ({
+													value: a.id,
+													label: a.name || "Unknown",
+													description: a.email || "-",
+												}),
+											) || []
+										}
+										placeholder="Add assignments..."
+									/>
 							) : (
 								<div className="flex flex-wrap gap-2">
 									{task.assignments?.map((a: any) => (

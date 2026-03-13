@@ -25,6 +25,8 @@ interface DateTimePickerProps {
 	includeTime?: boolean;
 	className?: string;
 	placeholder?: string;
+	minDate?: Date;
+	maxDate?: Date;
 }
 
 export function DateTimePicker({
@@ -33,6 +35,8 @@ export function DateTimePicker({
 	includeTime = true,
 	className,
 	placeholder = "Pick a date",
+	minDate,
+	maxDate,
 }: DateTimePickerProps) {
 	const handleDateSelect = (selectedDate: Date | undefined) => {
 		if (!selectedDate) {
@@ -99,6 +103,8 @@ export function DateTimePicker({
 					mode="single"
 					selected={date}
 					onSelect={handleDateSelect}
+					minDate={minDate}
+					maxDate={maxDate}
 				/>
 				{includeTime && (
 					<div className="p-3 border-t border-border flex gap-2">
